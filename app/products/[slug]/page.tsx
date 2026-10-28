@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Page } from "@/components/ProductCard";
+import { cld } from "@/lib/cloudinary";
 import { brands, catLabel, inr, loadProducts } from "@/lib/data/catalog";
 type P = { params: Promise<{ slug: string }> };
 export const generateStaticParams = async () => (await loadProducts()).map((p) => ({ slug: p.slug }));
@@ -10,12 +11,12 @@ export async function generateMetadata({ params }: P): Promise<Metadata> { const
 export default async function ProductPage({ params }: P) { const products = await loadProducts(); const { slug } = await params;
   const p = products.find((x) => x.slug === slug); if (!p) notFound();
   const brand = brands.find((b) => b.slug === p.brand);
-  const ld = { "@context": "https://schema.org", "@type": "Product", name: p.name, description: p.blurb, brand: brand?.name, offers: { "@type": "Offer", priceCurrency: "INR", price: p.price } };
+  const ld = { "@context": "https://schema.org", "@type": "Product", name: p.name, description: p.blurb, image: p.image ? cld(p.image, 1200) : undefined, brand: brand?.name, offers: { "@type": "Offer", priceCurrency: "INR", price: p.price } };
   return (
     <Page>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
       <div className="grid gap-10 md:grid-cols-2">
-        <div className="flex aspect-square items-center justify-center rounded-card bg-sage/60 font-display text-3xl text-forest/60">{p.name}</div>
+        {p.image ? <img src={cld(p.image, 900)} alt={p.name} width={900} height={900} className="aspect-square w-full rounded-card object-cover" /> : <div className="flex aspect-square items-center justify-center rounded-card bg-sage/60 font-display text-3xl text-forest/60">{p.name}</div>}
         <div>
           <p className="text-sm text-ink/60">{catLabel(p.category)} · {brand ? <a className="underline" href={`/brands/${p.brand}`}>{brand.name}</a> : p.brand}</p>
           <h1 className="mt-2 font-display text-4xl font-semibold text-forest">{p.name}</h1>

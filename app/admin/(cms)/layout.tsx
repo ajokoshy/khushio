@@ -6,5 +6,5 @@ export default async function CmsLayout({ children }: { children: React.ReactNod
   await requireAdmin();
   return (<div className="mx-auto max-w-page px-5 py-10">
     <div className="mb-8 flex items-center justify-between"><a href="/admin" className="font-display text-2xl font-semibold text-forest">Khushio admin</a>
-      <nav className="flex gap-5 text-sm"><a href="/admin" className="underline">Products</a><a href="/admin/content" className="underline">Deals, coupons, journal</a></nav><form action={logout}><button className="text-sm underline">Sign out</button></form></div>{children}</div>);
+      <nav className="flex gap-5 text-sm"><a href="/admin/dashboard" className="underline">Dashboard</a><a href="/admin" className="underline">Products</a><a href="/admin/content" className="underline">Deals, coupons, journal</a><a href="/admin/settings" className="underline">Settings</a></nav><form action={logout}><button className="text-sm underline">Sign out</button></form></div>{children}</div>);
 }

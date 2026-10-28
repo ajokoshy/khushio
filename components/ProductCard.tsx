@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { cld } from "@/lib/cloudinary";
 import { catLabel, inr, type Product } from "@/lib/data/catalog";
 
 export function ProductCard({ p }: { p: Product }) {
   return (
     <Link href={`/products/${p.slug}`} className="group flex flex-col overflow-hidden rounded-card border border-sand bg-white">
-      <div className="flex aspect-[4/3] items-center justify-center bg-sage/60 font-display text-2xl text-forest/60">{p.name.split(" ")[0]}</div>
+      {p.image ? <img src={cld(p.image, 600)} alt={p.name} width={600} height={450} loading="lazy" className="aspect-[4/3] w-full object-cover" /> : <div className="flex aspect-[4/3] items-center justify-center bg-sage/60 font-display text-2xl text-forest/60">{p.name.split(" ")[0]}</div>}
       <div className="flex flex-1 flex-col gap-1 p-4">
         <span className="text-xs text-ink/60">{catLabel(p.category)}</span>
         <h3 className="font-display text-lg font-semibold text-forest group-hover:text-terracotta">{p.name}</h3>

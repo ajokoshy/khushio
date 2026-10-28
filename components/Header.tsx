@@ -1,9 +1,13 @@
 import { Logo } from "./Logo";
 import { enabled, nav } from "@/lib/config/site";
+import { getSettings } from "@/lib/settings";
 
-export function Header() {
+export async function Header() {
   const items = enabled(nav);
+  const { announcement } = await getSettings();
   return (
+    <>
+    {announcement && <p className="bg-forest px-5 py-2 text-center text-sm text-ivory">{announcement}</p>}
     <header className="sticky top-0 z-40 border-b border-sand/70 bg-ivory/90 backdrop-blur">
       <div className="mx-auto flex max-w-page items-center justify-between gap-6 px-5 py-4">
         <Logo />
@@ -14,5 +18,6 @@ export function Header() {
         )}
       </div>
     </header>
+    </>
   );
 }

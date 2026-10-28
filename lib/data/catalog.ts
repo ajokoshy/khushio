@@ -1,7 +1,7 @@
 // SAMPLE DATA ONLY: replace with Neon/Drizzle queries (see drizzle/schema.ts). Offer URLs are placeholders.
 import { categories } from "@/lib/config/site";
 export type Offer = { id: string; merchant: string; url: string };
-export type Product = { slug: string; name: string; brand: string; category: string; blurb: string; price: number; mrp?: number; offers: Offer[] };
+export type Product = { slug: string; name: string; brand: string; category: string; blurb: string; price: number; mrp?: number; image?: string; offers: Offer[] };
 export type Deal = { slug: string; title: string; merchant: string; offerId: string; ends: string };
 export type Coupon = { code: string; merchant: string; detail: string; offerId: string };
 export type Article = { slug: string; title: string; excerpt: string; date: string; body: string[] };
@@ -44,7 +44,7 @@ export async function loadProducts(): Promise<Product[]> {
     const rows = await db.select().from(schema.products).where(eq(schema.products.status, "published"));
     if (!rows.length) return products;
     const offs = await db.select().from(schema.offers);
-    return rows.map((r) => ({ slug: r.slug, name: r.name, brand: r.brand, category: r.category, blurb: r.blurb, price: r.price, mrp: r.mrp ?? undefined,
+    return rows.map((r) => ({ slug: r.slug, name: r.name, brand: r.brand, category: r.category, blurb: r.blurb, price: r.price, mrp: r.mrp ?? undefined, image: r.imageUrl ?? undefined,
       offers: offs.filter((o) => o.productId === r.id).map((o) => ({ id: o.id, merchant: o.merchant, url: o.url })) }));
   } catch { return products; }
 }

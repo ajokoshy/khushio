@@ -8,5 +8,5 @@ export default async function EditProduct({ params, searchParams }: { params: Pr
   const { id } = await params; if (!db || !/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const [p] = await db.select().from(schema.products).where(eq(schema.products.id, id)); if (!p) notFound();
   const [o] = await db.select().from(schema.offers).where(eq(schema.offers.productId, id));
-  return (<div><h1 className="font-display text-3xl font-semibold text-forest">Edit product</h1><ProductForm action={updateProduct} error={!!(await searchParams).e} d={{ ...p, merchant: o?.merchant, url: o?.url }} /></div>);
+  return (<div><h1 className="font-display text-3xl font-semibold text-forest">Edit product</h1><ProductForm action={updateProduct} error={(await searchParams).e} d={{ ...p, merchant: o?.merchant, url: o?.url }} /></div>);
 }

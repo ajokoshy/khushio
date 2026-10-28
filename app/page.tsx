@@ -1,8 +1,12 @@
 import Image from "next/image";
 import { CategoryStrip } from "@/components/CategoryStrip";
 import { site } from "@/lib/config/site";
+import { getSettings } from "@/lib/settings";
 
-export default function Home() {
+export const revalidate = 60;
+
+export default async function Home() {
+  const s = await getSettings();
   const jsonLd = {
     "@context": "https://schema.org", "@type": "WebSite", name: site.name, url: site.url,
     potentialAction: { "@type": "SearchAction", target: `${site.url}/shop?q={search_term_string}`, "query-input": "required name=search_term_string" },
@@ -14,14 +18,14 @@ export default function Home() {
         <div className="mx-auto grid max-w-page items-center gap-10 px-5 py-12 lg:grid-cols-2 lg:py-20">
           <div>
             <h1 className="font-display text-5xl font-semibold leading-[1.08] text-forest sm:text-6xl">
-              Discover More.<br />Save More.<br />Live Happier.
+              {s.hero_title.split("\n").map((l, i) => <span key={i} className="block">{l}</span>)}
             </h1>
             <p className="mt-6 max-w-md text-lg leading-relaxed text-ink/80">
-              From everyday essentials to special moments, find the best products, deals and brands, all in one place.
+              {s.hero_subtitle}
             </p>
             <form action="/shop" role="search" className="mt-8 flex max-w-xl items-center rounded-full border border-sand bg-white p-1.5 shadow-sm">
               <label htmlFor="q" className="sr-only">Search products, brands and deals</label>
-              <input id="q" name="q" type="search" placeholder="Search for products, brands, deals and more..." className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm outline-none placeholder:text-ink/50" />
+              <input id="q" name="q" type="search" placeholder={s.search_placeholder} className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm outline-none placeholder:text-ink/50" />
               <button type="submit" className="rounded-full bg-forest px-5 py-2.5 text-sm font-medium text-ivory hover:bg-forest-700">Search</button>
             </form>
           </div>
