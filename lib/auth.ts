@@ -6,11 +6,32 @@ const sig = (v: string) => createHmac("sha256", process.env.AUTH_SECRET ?? "").u
 const safeEq = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 export function checkLogin(email: string, password: string) {
-  const [salt, hash] = (process.env.ADMIN_PASSWORD_HASH ?? "").split(":");
-  if (!salt || !hash || !process.env.AUTH_SECRET || (process.env.AUTH_SECRET.length < 32)) return false;
-  const okEmail = safeEq(email.trim().toLowerCase(), (process.env.ADMIN_EMAIL ?? "").toLowerCase());
-  const okPass = safeEq(scryptSync(password, salt, 64).toString("hex"), hash);
-  return okEmail && okPass;
+  const envHash = (process.env.ADMIN_PASSWORD_HASH ?? "").trim();
+  const envEmail = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
+  const secret = process.env.AUTH_SECRET ?? "";
+  const [salt, hash] = envHash.split(":");
+
+  const hashFormatOk = salt?.length === 32 && hash?.length === 128;
+  const okEmail = safeEq(email.trim().toLowerCase(), envEmail);
+  const okPass = hashFormatOk && safeEq(scryptSync(password, salt, 64).toString("hex"), hash);
+
+  // TEMPORARY DEBUG: remove after login works. Logs yes/no results and lengths only, never values.
+  console.log("[login-debug]", {
+    ADMIN_EMAIL_set: envEmail.length > 0,
+    ADMIN_PASSWORD_HASH_set: envHash.length > 0,
+    hash_format_ok: hashFormatOk,
+    hash_salt_len: salt?.length ?? 0,
+    hash_value_len: hash?.length ?? 0,
+    AUTH_SECRET_len: secret.length,
+    AUTH_SECRET_ok: secret.length >= 32,
+    email_matches: okEmail,
+    submitted_email_len: email.trim().length,
+    configured_email_len: envEmail.length,
+    password_matches: okPass,
+    submitted_password_len: password.length,
+  });
+
+  return okEmail && okPass && secret.length >= 32;
 }
 export async function startSession() {
   const exp = String(Date.now() + 7 * DAY);
