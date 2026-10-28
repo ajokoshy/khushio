@@ -13,24 +13,10 @@ export function checkLogin(email: string, password: string) {
 
   const hashFormatOk = salt?.length === 32 && hash?.length === 128;
   const okEmail = safeEq(email.trim().toLowerCase(), envEmail);
-  const okPass = hashFormatOk && safeEq(scryptSync(password, salt, 64).toString("hex"), hash);
-
-  // TEMPORARY DEBUG: remove after login works. Logs yes/no results and lengths only, never values.
-  console.log("[login-debug]", {
-    ADMIN_EMAIL_set: envEmail.length > 0,
-    ADMIN_PASSWORD_HASH_set: envHash.length > 0,
-    hash_format_ok: hashFormatOk,
-    hash_salt_len: salt?.length ?? 0,
-    hash_value_len: hash?.length ?? 0,
-    AUTH_SECRET_len: secret.length,
-    AUTH_SECRET_ok: secret.length >= 32,
-    email_matches: okEmail,
-    submitted_email_len: email.trim().length,
-    configured_email_len: envEmail.length,
-    password_matches: okPass,
-    submitted_password_len: password.length,
-  });
-
+  const plain = process.env.ADMIN_PASSWORD ?? "";
+  const okPass = hashFormatOk
+  ? safeEq(scryptSync(password, salt, 64).toString("hex"), hash)
+  : plain.length >= 12 && safeEq(password, plain);
   return okEmail && okPass && secret.length >= 32;
 }
 export async function startSession() {
