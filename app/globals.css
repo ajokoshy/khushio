@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { background: #FAF5EA; color: #1F2A22; scroll-behavior: smooth; }
+  body { @apply font-sans antialiased; }
+  :focus-visible { outline: 3px solid #D9693F; outline-offset: 3px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+}
