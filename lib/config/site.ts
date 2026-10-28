@@ -8,7 +8,7 @@ export const site = {
 /** Turn a section on only when its routes exist. Disabled sections are hidden from nav, footer and sitemap. */
 export const features = {
   shop: true, categories: true, deals: true, coupons: true, brands: true,
-  bestPicks: false, compare: false, gifts: false, discover: false, journal: true,
+  bestPicks: true, compare: true, gifts: true, discover: true, journal: true,
   legal: true,
 } as const;
 
@@ -20,6 +20,7 @@ export const nav: NavItem[] = [
   { label: "Deals", href: "/deals", feature: "deals" },
   { label: "Coupons", href: "/coupons", feature: "coupons" },
   { label: "Best picks", href: "/best-picks", feature: "bestPicks" },
+  { label: "Compare", href: "/compare", feature: "compare" },
   { label: "Gifts", href: "/gifts", feature: "gifts" },
   { label: "Discover", href: "/discover", feature: "discover" },
   { label: "Journal", href: "/journal", feature: "journal" },

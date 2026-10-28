@@ -34,3 +34,30 @@ export const articles: Article[] = [
 export const catLabel = (slug: string) => categories.find((c) => c.slug === slug)?.label ?? slug;
 export const findOffer = (id: string) => products.flatMap((p) => p.offers).find((o) => o.id === id);
 export const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+// ---- Live data: Neon when DATABASE_URL is set and has published products, otherwise the samples above ----
+import { desc, eq } from "drizzle-orm";
+import { db, schema } from "@/lib/db";
+export async function loadProducts(): Promise<Product[]> {
+  if (!db) return products;
+  try {
+    const rows = await db.select().from(schema.products).where(eq(schema.products.status, "published"));
+    if (!rows.length) return products;
+    const offs = await db.select().from(schema.offers);
+    return rows.map((r) => ({ slug: r.slug, name: r.name, brand: r.brand, category: r.category, blurb: r.blurb, price: r.price, mrp: r.mrp ?? undefined,
+      offers: offs.filter((o) => o.productId === r.id).map((o) => ({ id: o.id, merchant: o.merchant, url: o.url })) }));
+  } catch { return products; }
+}
+const UUID = /^[0-9a-f-]{36}$/i;
+async function safe<T>(fn: () => Promise<T[]>, fallback: T[]): Promise<T[]> { if (!db) return fallback; try { return await fn(); } catch { return fallback; } }
+export const loadDeals = () => safe<Deal>(async () => (await db!.select().from(schema.deals).orderBy(desc(schema.deals.createdAt))).map((r) => ({ slug: r.id, title: r.title, merchant: r.merchant, offerId: r.id, ends: r.ends })), deals);
+export const loadCoupons = () => safe<Coupon>(async () => (await db!.select().from(schema.coupons).orderBy(desc(schema.coupons.createdAt))).map((r) => ({ code: r.code, merchant: r.merchant, detail: r.detail, offerId: r.id })), coupons);
+export const loadArticles = () => safe<Article>(async () => (await db!.select().from(schema.articles).orderBy(desc(schema.articles.createdAt))).map((r) => ({ slug: r.slug, title: r.title, excerpt: r.excerpt, date: r.date, body: r.body.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean) })), articles);
+export async function findOfferAsync(id: string): Promise<{ id: string; merchant: string; url: string } | undefined> {
+  const hit = findOffer(id) ?? (await loadProducts()).flatMap((p) => p.offers).find((o) => o.id === id);
+  if (hit || !db || !UUID.test(id)) return hit;
+  try {
+    const [d] = await db.select().from(schema.deals).where(eq(schema.deals.id, id)); if (d) return { id, merchant: d.merchant, url: d.url };
+    const [c] = await db.select().from(schema.coupons).where(eq(schema.coupons.id, id)); if (c) return { id, merchant: c.merchant, url: c.url };
+  } catch {}
+}
