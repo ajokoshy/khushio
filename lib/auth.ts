@@ -19,10 +19,12 @@ export function checkLogin(email: string, password: string) {
   : plain.length >= 12 && safeEq(password, plain);
   return okEmail && okPass && secret.length >= 32;
 }
+
 export async function startSession() {
   const exp = String(Date.now() + 7 * DAY);
   (await cookies()).set(NAME, `${exp}.${sig(exp)}`, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 7 * 86400 });
 }
+
 export async function endSession() { (await cookies()).delete(NAME); }
 export async function isAdmin() {
   const v = (await cookies()).get(NAME)?.value; if (!v || !process.env.AUTH_SECRET) return false;
