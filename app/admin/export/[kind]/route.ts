@@ -1,8 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth";
+import { toCsv as csv } from "@/lib/csv";
 import { db, schema } from "@/lib/db";
-const esc = (v: unknown) => { let s = v == null ? "" : v instanceof Date ? v.toISOString() : String(v); if (/^[=+\-@]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
-const csv = (head: string[], rows: unknown[][]) => [head.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))].join("\n");
 export async function GET(_: Request, { params }: { params: Promise<{ kind: string }> }) {
   if (!(await isAdmin())) return new Response("Unauthorized", { status: 401 });
   if (!db) return new Response("No database", { status: 503 });

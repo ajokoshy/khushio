@@ -3,7 +3,7 @@ import { db, schema } from "@/lib/db";
 import { createArticle, createCoupon, createDeal, deleteContent } from "../../actions";
 export const dynamic = "force-dynamic";
 const I = "mt-1 w-full rounded-lg border border-sand bg-white px-3 py-2";
-const Del = ({ table, id }: { table: string; id: string }) => (<form action={deleteContent}><input type="hidden" name="table" value={table} /><input type="hidden" name="id" value={id} /><button className="text-sm text-terracotta-600 underline">Delete</button></form>);
+const Del = ({ table, id }: { table: string; id: string }) => (<span className="flex gap-4"><a href={`/admin/content/edit/${table}/${id}`} className="text-sm underline">Edit</a><form action={deleteContent}><input type="hidden" name="table" value={table} /><input type="hidden" name="id" value={id} /><button className="text-sm text-terracotta-600 underline">Delete</button></form></span>);
 const Box = ({ title, children }: { title: string; children: React.ReactNode }) => (<section className="mt-10"><h2 className="font-display text-2xl font-semibold text-forest">{title}</h2>{children}</section>);
 export default async function Content({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const err = (await searchParams).e;

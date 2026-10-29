@@ -1,7 +1,7 @@
 // SAMPLE DATA ONLY: replace with Neon/Drizzle queries (see drizzle/schema.ts). Offer URLs are placeholders.
-import { categories } from "@/lib/config/site";
+import { categories, toneClass } from "@/lib/config/site";
 export type Offer = { id: string; merchant: string; url: string };
-export type Product = { slug: string; name: string; brand: string; category: string; blurb: string; price: number; mrp?: number; image?: string; offers: Offer[] };
+export type Product = { slug: string; name: string; brand: string; category: string; categoryLabel?: string; blurb: string; price: number; mrp?: number; image?: string; offers: Offer[] };
 export type Deal = { slug: string; title: string; merchant: string; offerId: string; ends: string };
 export type Coupon = { code: string; merchant: string; detail: string; offerId: string };
 export type Article = { slug: string; title: string; excerpt: string; date: string; body: string[] };
@@ -36,7 +36,7 @@ export const findOffer = (id: string) => products.flatMap((p) => p.offers).find(
 export const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 // ---- Live data: Neon when DATABASE_URL is set and has published products, otherwise the samples above ----
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 export async function loadProducts(): Promise<Product[]> {
   if (!db) return products;
@@ -44,7 +44,8 @@ export async function loadProducts(): Promise<Product[]> {
     const rows = await db.select().from(schema.products).where(eq(schema.products.status, "published"));
     if (!rows.length) return products;
     const offs = await db.select().from(schema.offers);
-    return rows.map((r) => ({ slug: r.slug, name: r.name, brand: r.brand, category: r.category, blurb: r.blurb, price: r.price, mrp: r.mrp ?? undefined, image: r.imageUrl ?? undefined,
+    const labels = Object.fromEntries((await loadCategories()).map((c) => [c.slug, c.label]));
+    return rows.map((r) => ({ categoryLabel: labels[r.category], slug: r.slug, name: r.name, brand: r.brand, category: r.category, blurb: r.blurb, price: r.price, mrp: r.mrp ?? undefined, image: r.imageUrl ?? undefined,
       offers: offs.filter((o) => o.productId === r.id).map((o) => ({ id: o.id, merchant: o.merchant, url: o.url })) }));
   } catch { return products; }
 }
@@ -61,3 +62,23 @@ export async function findOfferAsync(id: string): Promise<{ id: string; merchant
     const [c] = await db.select().from(schema.coupons).where(eq(schema.coupons.id, id)); if (c) return { id, merchant: c.merchant, url: c.url };
   } catch {}
 }
+
+export type Brand = { slug: string; name: string; about: string };
+export async function loadBrands(): Promise<Brand[]> {
+  const rows = await safe<Brand>(async () => (await db!.select().from(schema.brands)).map((r) => ({ slug: r.slug, name: r.name, about: r.about })), brands);
+  return rows.length ? rows : brands;
+}
+
+export type Category = { slug: string; label: string; icon: string; tone: string };
+export async function loadCategories(): Promise<Category[]> {
+  const rows = await safe<Category>(async () => (await db!.select().from(schema.categories).orderBy(asc(schema.categories.position))).map((r) => ({ slug: r.slug, label: r.label, icon: r.icon, tone: toneClass[r.tone] ?? toneClass.sand })), []);
+  return rows.length ? rows : [...categories];
+}
+
+export type Collection = { slug: string; title: string; description: string; productSlugs: string[] };
+export const loadCollections = () => safe<Collection>(async () => {
+  const cs = await db!.select().from(schema.collections).orderBy(asc(schema.collections.position));
+  const links = await db!.select({ cid: schema.collectionProducts.collectionId, slug: schema.products.slug }).from(schema.collectionProducts)
+    .innerJoin(schema.products, eq(schema.products.id, schema.collectionProducts.productId)).orderBy(asc(schema.collectionProducts.position));
+  return cs.map((c) => ({ slug: c.slug, title: c.title, description: c.description, productSlugs: links.filter((l) => l.cid === c.id).map((l) => l.slug) }));
+}, []);

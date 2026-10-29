@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Compare products", description: "Com
 export default async function Compare({ searchParams }: { searchParams: Promise<{ p?: string | string[] }> }) {
   const raw = (await searchParams).p; const picked = (Array.isArray(raw) ? raw : raw ? [raw] : []).slice(0, 3);
   const all = await loadProducts(); const sel = picked.map((s) => all.find((p) => p.slug === s)).filter((p): p is NonNullable<typeof p> => !!p);
-  const rows: [string, (p: (typeof all)[number]) => string][] = [["Price", (p) => inr(p.price)], ["MRP", (p) => (p.mrp ? inr(p.mrp) : "-")], ["Category", (p) => catLabel(p.category)], ["Brand", (p) => p.brand || "-"], ["About", (p) => p.blurb]];
+  const rows: [string, (p: (typeof all)[number]) => string][] = [["Price", (p) => inr(p.price)], ["MRP", (p) => (p.mrp ? inr(p.mrp) : "-")], ["Category", (p) => (p.categoryLabel ?? catLabel(p.category))], ["Brand", (p) => p.brand || "-"], ["About", (p) => p.blurb]];
   return (<Page><PageHead title="Compare products" intro="Choose up to three products." />
     <form className="mb-8 rounded-card border border-sand bg-white p-5"><fieldset><legend className="mb-3 font-medium text-forest">Products</legend>
       <div className="grid gap-2 sm:grid-cols-2">{all.map((p) => <label key={p.slug} className="flex items-center gap-2 text-sm"><input type="checkbox" name="p" value={p.slug} defaultChecked={picked.includes(p.slug)} />{p.name}</label>)}</div></fieldset>

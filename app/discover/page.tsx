@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { CategoryStrip } from "@/components/CategoryStrip";
 import { Grid, Page, PageHead, ProductCard } from "@/components/ProductCard";
-import { brands, loadProducts } from "@/lib/data/catalog";
+import { loadBrands, loadProducts } from "@/lib/data/catalog";
 export const metadata: Metadata = { title: "Discover", description: "Fresh finds, brands and categories on Khushio.", alternates: { canonical: "/discover" } };
 export const revalidate = 60;
-export default async function Discover() {
+export default async function Discover() { const brands = await loadBrands();
   const fresh = (await loadProducts()).slice(-6).reverse();
   return (<Page><PageHead title="Discover" intro="Fresh finds, emerging brands and every category in one place." />
     <h2 className="mb-3 font-display text-2xl font-semibold text-forest">New and noteworthy</h2><Grid>{fresh.map((p) => <ProductCard key={p.slug} p={p} />)}</Grid>

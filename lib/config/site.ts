@@ -8,7 +8,7 @@ export const site = {
 /** Turn a section on only when its routes exist. Disabled sections are hidden from nav, footer and sitemap. */
 export const features = {
   shop: true, categories: true, deals: true, coupons: true, brands: true,
-  bestPicks: true, compare: true, gifts: true, discover: true, journal: true,
+  bestPicks: true, compare: true, gifts: true, discover: true, journal: true, collections: true,
   legal: true,
 } as const;
 
@@ -21,6 +21,7 @@ export const nav: NavItem[] = [
   { label: "Coupons", href: "/coupons", feature: "coupons" },
   { label: "Best picks", href: "/best-picks", feature: "bestPicks" },
   { label: "Compare", href: "/compare", feature: "compare" },
+  { label: "Collections", href: "/collections", feature: "collections" },
   { label: "Gifts", href: "/gifts", feature: "gifts" },
   { label: "Discover", href: "/discover", feature: "discover" },
   { label: "Journal", href: "/journal", feature: "journal" },
@@ -46,3 +47,9 @@ export const categories = [
   { slug: "travel-experiences", label: "Travel & Experiences", icon: "Plane", tone: "bg-[#D5EBE2] text-[#2F7A64]" },
   { slug: "books-more", label: "Books & More", icon: "BookOpen", tone: "bg-sand text-[#7A5F45]" },
 ] as const;
+
+export const toneClass: Record<string, string> = {
+  rose: "bg-[#F8D9CF] text-terracotta", teal: "bg-[#D5E8E4] text-[#2F6F68]", sage: "bg-[#DDE5D0] text-forest-700", gold: "bg-[#F6E6BD] text-[#B7852B]",
+  violet: "bg-[#E6DDF0] text-[#7A5FA0]", mint: "bg-[#D5EBE2] text-[#2F7A64]", sand: "bg-sand text-[#7A5F45]",
+};
+export const categoryIcons = ["Shirt", "Smartphone", "Sparkles", "Home", "Baby", "Dumbbell", "Plane", "BookOpen", "Gift", "ShoppingBag", "Heart", "Utensils"] as const;

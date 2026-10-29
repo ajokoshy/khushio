@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 export const products = pgTable("products", {
   id: uuid("id").primaryKey().defaultRandom(), slug: text("slug").notNull().unique(), name: text("name").notNull(),
   brand: text("brand").notNull().default(""), category: text("category").notNull(), blurb: text("blurb").notNull().default(""),
@@ -7,7 +7,7 @@ export const products = pgTable("products", {
 }, (t) => [index("products_category_idx").on(t.category), index("products_status_idx").on(t.status)]);
 export const offers = pgTable("offers", {
   id: uuid("id").primaryKey().defaultRandom(), productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
-  merchant: text("merchant").notNull(), url: text("url").notNull(),
+  merchant: text("merchant").notNull(), url: text("url").notNull(), merchantId: uuid("merchant_id").references(() => merchants.id),
 });
 export const clicks = pgTable("clicks", { id: uuid("id").primaryKey().defaultRandom(), offerId: uuid("offer_id").notNull(), at: timestamp("at").defaultNow(), referrer: text("referrer") });
 export const deals = pgTable("deals", { id: uuid("id").primaryKey().defaultRandom(), title: text("title").notNull(), merchant: text("merchant").notNull(), url: text("url").notNull(), ends: text("ends").notNull().default(""), createdAt: timestamp("created_at").defaultNow() });
@@ -15,3 +15,9 @@ export const coupons = pgTable("coupons", { id: uuid("id").primaryKey().defaultR
 export const articles = pgTable("articles", { id: uuid("id").primaryKey().defaultRandom(), slug: text("slug").notNull().unique(), title: text("title").notNull(), excerpt: text("excerpt").notNull().default(""), body: text("body").notNull(), date: text("date").notNull(), createdAt: timestamp("created_at").defaultNow() });
 export const siteSettings = pgTable("site_settings", { key: text("key").primaryKey(), value: text("value").notNull().default(""), updatedAt: timestamp("updated_at").defaultNow() });
 export const loginAttempts = pgTable("login_attempts", { id: uuid("id").primaryKey().defaultRandom(), ip: text("ip").notNull(), at: timestamp("at").defaultNow() });
+export const brands = pgTable("brands", { id: uuid("id").primaryKey().defaultRandom(), slug: text("slug").notNull().unique(), name: text("name").notNull(), about: text("about").notNull().default(""), createdAt: timestamp("created_at").defaultNow() });
+export const categories = pgTable("categories", { id: uuid("id").primaryKey().defaultRandom(), slug: text("slug").notNull().unique(), label: text("label").notNull(), icon: text("icon").notNull().default("Sparkles"), tone: text("tone").notNull().default("sand"), position: integer("position").notNull().default(0), createdAt: timestamp("created_at").defaultNow() });
+export const merchants = pgTable("merchants", { id: uuid("id").primaryKey().defaultRandom(), slug: text("slug").notNull().unique(), name: text("name").notNull(), website: text("website").notNull().default(""), createdAt: timestamp("created_at").defaultNow() });
+export const collections = pgTable("collections", { id: uuid("id").primaryKey().defaultRandom(), slug: text("slug").notNull().unique(), title: text("title").notNull(), description: text("description").notNull().default(""), position: integer("position").notNull().default(0), createdAt: timestamp("created_at").defaultNow() });
+export const collectionProducts = pgTable("collection_products", { collectionId: uuid("collection_id").notNull().references(() => collections.id, { onDelete: "cascade" }), productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }), position: integer("position").notNull().default(0) }, (t) => [primaryKey({ columns: [t.collectionId, t.productId] })]);
+export const auditLog = pgTable("audit_log", { id: uuid("id").primaryKey().defaultRandom(), at: timestamp("at").defaultNow(), actor: text("actor").notNull(), action: text("action").notNull(), target: text("target").notNull().default("") });

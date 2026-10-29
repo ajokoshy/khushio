@@ -1,7 +1,8 @@
-import { categories } from "@/lib/config/site";
+import { loadCategories } from "@/lib/data/catalog";
 const I = "mt-1 w-full rounded-lg border border-sand bg-white px-3 py-2";
 type D = { id?: string; imageUrl?: string | null; name?: string; slug?: string; brand?: string; category?: string; blurb?: string; price?: number; mrp?: number | null; status?: string; merchant?: string; url?: string };
-export function ProductForm({ action, d = {}, error }: { action: (f: FormData) => Promise<void>; d?: D; error?: string }) {
+export async function ProductForm({ action, d = {}, error }: { action: (f: FormData) => Promise<void>; d?: D; error?: string }) {
+  const categories = await loadCategories();
   return (<form action={action} className="mt-6 grid max-w-xl gap-4 text-sm">
     {error && <p role="alert" className="text-terracotta-600">{error === "2" ? "Image must be JPG, PNG or WebP and under 3.5 MB." : error === "3" ? "Image upload failed. Check the Cloudinary settings." : "Check the name, price, category and an https:// link."}</p>}
     {d.id && <input type="hidden" name="id" value={d.id} />}

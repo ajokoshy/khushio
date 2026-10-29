@@ -45,3 +45,20 @@ INSERT INTO articles (slug, title, excerpt, body, date) VALUES
    E'Start with storage: baskets and shelves clear visual clutter fast.\n\nAdd one natural texture such as jute, cotton or wood.\n\nSwap harsh bulbs for warm light in the evening.',
    '2026-10-28')
 ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO brands (slug, name, about) VALUES
+  ('greenleaf', 'Greenleaf', 'Sample emerging brand for everyday home goods.'),
+  ('tarang',    'Tarang',    'Sample brand for sound and small electronics.'),
+  ('kora',      'Kora',      'Sample brand for skin and body care.')
+ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO categories (slug, label, icon, tone, position) VALUES
+  ('fashion-accessories',  'Fashion & Accessories',  'Shirt',      'rose',   1),
+  ('electronics-gadgets',  'Electronics & Gadgets',  'Smartphone', 'teal',   2),
+  ('beauty-personal-care', 'Beauty & Personal Care', 'Sparkles',   'rose',   3),
+  ('home-living',          'Home & Living',          'Home',       'sage',   4),
+  ('kids-baby',            'Kids & Baby',            'Baby',       'gold',   5),
+  ('sports-fitness',       'Sports & Fitness',       'Dumbbell',   'violet', 6),
+  ('travel-experiences',   'Travel & Experiences',   'Plane',      'mint',   7),
+  ('books-more',           'Books & More',           'BookOpen',   'sand',   8)
+ON CONFLICT (slug) DO NOTHING;

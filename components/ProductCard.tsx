@@ -7,7 +7,7 @@ export function ProductCard({ p }: { p: Product }) {
     <Link href={`/products/${p.slug}`} className="group flex flex-col overflow-hidden rounded-card border border-sand bg-white">
       {p.image ? <img src={cld(p.image, 600)} alt={p.name} width={600} height={450} loading="lazy" className="aspect-[4/3] w-full object-cover" /> : <div className="flex aspect-[4/3] items-center justify-center bg-sage/60 font-display text-2xl text-forest/60">{p.name.split(" ")[0]}</div>}
       <div className="flex flex-1 flex-col gap-1 p-4">
-        <span className="text-xs text-ink/60">{catLabel(p.category)}</span>
+        <span className="text-xs text-ink/60">{(p.categoryLabel ?? catLabel(p.category))}</span>
         <h3 className="font-display text-lg font-semibold text-forest group-hover:text-terracotta">{p.name}</h3>
         <p className="text-sm text-ink/70">{p.blurb}</p>
         <p className="mt-auto pt-2 font-medium text-forest">{inr(p.price)} {p.mrp && <span className="ml-1 text-sm font-normal text-ink/50 line-through">{inr(p.mrp)}</span>}</p>
