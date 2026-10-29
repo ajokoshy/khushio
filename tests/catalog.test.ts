@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { categories } from "../lib/config/site";
 import { articles, brands, catLabel, coupons, deals, findOffer, findOfferAsync, inr, loadArticles, loadBrands, loadCategories, loadCollections, loadCoupons, loadDeals, loadProducts, products } from "../lib/data/catalog";
 describe("sample data integrity", () => {
@@ -21,4 +21,15 @@ describe("loaders fall back to samples without a database", () => {
   it("categories", async () => expect((await loadCategories()).map((c) => c.slug)).toEqual(categories.map((c) => c.slug)));
   it("deals, coupons and articles", async () => { expect(await loadDeals()).toEqual(deals); expect(await loadCoupons()).toEqual(coupons); expect(await loadArticles()).toEqual(articles); });
   it("collections are empty", async () => expect(await loadCollections()).toEqual([]));
+});
+
+describe("production never serves sample data", () => {
+  it("returns empty catalogue data and refuses sample offers when NODE_ENV is production and there is no database", async () => {
+    vi.stubEnv("NODE_ENV", "production"); vi.resetModules();
+    const c = await import("../lib/data/catalog");
+    expect(await c.loadProducts()).toEqual([]); expect(await c.loadDeals()).toEqual([]); expect(await c.loadCoupons()).toEqual([]);
+    expect(await c.loadArticles()).toEqual([]); expect(await c.loadBrands()).toEqual([]); expect(await c.loadCategories()).toEqual([]);
+    expect(await c.resolveOffer("o2")).toBeUndefined();
+    vi.unstubAllEnvs(); vi.resetModules();
+  });
 });

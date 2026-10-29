@@ -2,6 +2,7 @@ import Image from "next/image";
 import { CategoryStrip } from "@/components/CategoryStrip";
 import { site } from "@/lib/config/site";
 import { getSettings } from "@/lib/settings";
+import { JsonLd } from "@/lib/seo/jsonld";
 
 export const revalidate = 60;
 
@@ -11,9 +12,10 @@ export default async function Home() {
     "@context": "https://schema.org", "@type": "WebSite", name: site.name, url: site.url,
     potentialAction: { "@type": "SearchAction", target: `${site.url}/shop?q={search_term_string}`, "query-input": "required name=search_term_string" },
   };
+  const org = { "@context": "https://schema.org", "@type": "Organization", name: site.name, url: site.url, logo: `${site.url}/brand/khushio-logo.png` };
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={[jsonLd, org]} />
       <section className="bg-gradient-to-br from-ivory via-cream to-sage/50">
         <div className="mx-auto grid max-w-page items-center gap-10 px-5 py-12 lg:grid-cols-2 lg:py-20">
           <div>
