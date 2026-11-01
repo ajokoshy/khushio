@@ -20,13 +20,28 @@ const security = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
+/**
+ * Cost settings (Vercel and Cloudinary):
+ * - images.unoptimized: product images are already optimised and cached by Cloudinary; sending them through Vercel Image
+ *   Optimization too would bill the same work twice. (The site uses plain <img>; this also protects any future next/image.)
+ * - static files in /brand and /images are cached for a day at the edge and revalidated in the background.
+ * - /shop, /gifts, /compare and /journal depend on the query string so they render per request; a short shared-cache lifetime lets the
+ *   CDN answer repeat visits to the same URL without running a function.
+ */
+const STATIC_CACHE = "public, max-age=86400, stale-while-revalidate=604800";
+const PAGE_CACHE = "public, max-age=0, s-maxage=300, stale-while-revalidate=600";
+
 /** @type {import('next').NextConfig} */
 export default {
-  reactStrictMode: true, poweredByHeader: false, experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  reactStrictMode: true, poweredByHeader: false, images: { unoptimized: true },
+  experimental: { serverActions: { bodySizeLimit: "4mb" }, optimizePackageImports: ["lucide-react"] },
   async headers() {
     return [
       { source: "/:path*", headers: security },
       { source: "/admin/:path*", headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/brand/:path*", headers: [{ key: "Cache-Control", value: STATIC_CACHE }] },
+      { source: "/images/:path*", headers: [{ key: "Cache-Control", value: STATIC_CACHE }] },
+      ...["/shop", "/gifts", "/compare", "/journal"].map((source) => ({ source, headers: [{ key: "Cache-Control", value: PAGE_CACHE }] })),
     ];
   },
 };

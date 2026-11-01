@@ -31,6 +31,8 @@ export const legalLinks: NavItem[] = [
   { label: "About", href: "/about", feature: "legal" },
   { label: "Contact", href: "/contact", feature: "legal" },
   { label: "Affiliate disclosure", href: "/affiliate-disclosure", feature: "legal" },
+  { label: "Editorial policy", href: "/editorial-policy", feature: "legal" },
+  { label: "Disclaimer", href: "/disclaimer", feature: "legal" },
   { label: "Privacy policy", href: "/privacy-policy", feature: "legal" },
   { label: "Terms and conditions", href: "/terms-and-conditions", feature: "legal" },
 ];

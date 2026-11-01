@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const resolve = vi.fn(); const insert = vi.fn();
 vi.mock("../lib/data/catalog", () => ({ resolveOffer: (id: string) => resolve(id) }));
+vi.mock("../lib/maintenance", () => ({ maintainSometimes: async () => {} }));
 vi.mock("../lib/db", () => ({ db: { insert: () => ({ values: insert }) }, schema: { clicks: {} } }));
 import { GET } from "../app/go/[id]/route";
 const ID = "11111111-1111-1111-1111-111111111111";

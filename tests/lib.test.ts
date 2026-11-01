@@ -6,6 +6,6 @@ describe("csv", () => {
   it("removes the export formula guard", () => { expect(unescapeCell("'=SUM(1)")).toBe("=SUM(1)"); expect(unescapeCell("plain")).toBe("plain"); });
 });
 describe("cloudinary url", () => {
-  it("adds format, quality and width", () => { expect(cld("https://res.cloudinary.com/x/image/upload/v1/a.jpg", 600)).toBe("https://res.cloudinary.com/x/image/upload/f_auto,q_auto,w_600/v1/a.jpg"); });
+  it("adds format, quality, a no-upscale limit and a width from the fixed set", () => { expect(cld("https://res.cloudinary.com/x/image/upload/v1/a.jpg", 600)).toBe("https://res.cloudinary.com/x/image/upload/f_auto,q_auto,c_limit,w_640/v1/a.jpg"); });
   it("leaves other urls alone", () => { expect(cld("https://example.com/a.jpg")).toBe("https://example.com/a.jpg"); });
 });

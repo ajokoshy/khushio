@@ -2,11 +2,12 @@ import { parseCsv, unescapeCell } from "./csv";
 import { slugify } from "./slug";
 export type ImportRow = { line: number; slug: string; name: string; brand: string; category: string; blurb: string; price: number; mrp: number | null; status: "draft" | "published"; merchant: string; url: string };
 export type ImportError = { line: number; reason: string };
-export const IMPORT_ROW_LIMIT = 100;
+export { IMPORT_ROW_LIMIT } from "./import-kinds";
+import { IMPORT_ROW_LIMIT } from "./import-kinds";
 export const REQUIRED_COLUMNS = ["name", "price", "category", "url"] as const;
 
 /** Validates product CSV rows and says why each rejected row was rejected. `line` is the 1-based line in the file (header = 1). */
-export function validateProductRows(text: string, categories: string[], limit = IMPORT_ROW_LIMIT): { rows: ImportRow[]; errors: ImportError[]; missingColumns: string[]; truncated: number } {
+export function validateProductRows(text: string, categories: string[], limit = IMPORT_ROW_LIMIT, brands?: string[]): { rows: ImportRow[]; errors: ImportError[]; missingColumns: string[]; truncated: number } {
   const [head = [], ...data] = parseCsv(text);
   const idx = head.map((h) => h.trim().toLowerCase());
   const missingColumns = data.length || head.length ? REQUIRED_COLUMNS.filter((c) => !idx.includes(c)) : [];
@@ -23,6 +24,7 @@ export function validateProductRows(text: string, categories: string[], limit = 
     if (!(price > 0)) return bad("price must be a positive number");
     if (mrp !== null && mrp <= price) return bad("mrp must be higher than price (or empty)");
     if (!categories.includes(category)) return bad(`unknown category "${category}"`);
+    const brand = slugify(col(r, "brand")); if (brands && brand && !brands.includes(brand)) return bad(`unknown brand "${brand}" (import or add the brand first)`);
     if (!url.startsWith("https://")) return bad("link must start with https://");
     if (seen.has(slug)) return bad(`slug "${slug}" appears more than once in this file`);
     seen.add(slug);

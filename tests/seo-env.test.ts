@@ -37,3 +37,11 @@ describe("security headers", () => {
     expect(rules.find((r) => r.source === "/admin/:path*")!.headers.find((h) => h.key === "Cache-Control")!.value).toContain("no-store");
   });
 });
+
+describe("cache lifetimes (cost)", () => {
+  it("the default data lifetime is at least six hours, so it can never make pages regenerate every few minutes", async () => { const { DEFAULT_REVALIDATE } = await import("../lib/cache"); expect(DEFAULT_REVALIDATE).toBeGreaterThanOrEqual(21600); });
+  it("per-request pages get a shared-cache lifetime so the CDN answers repeat visits", async () => {
+    const rules = await config.headers(); for (const src of ["/shop", "/gifts", "/compare", "/journal"]) expect(rules.find((r) => r.source === src)?.headers.find((h) => h.key === "Cache-Control")?.value, src).toContain("s-maxage");
+  });
+  it("images skip Vercel's image optimiser and static assets are cached", async () => { expect((rawConfig as { images?: { unoptimized?: boolean } }).images?.unoptimized).toBe(true); const rules = await config.headers(); for (const src of ["/brand/:path*", "/images/:path*"]) expect(rules.find((r) => r.source === src)?.headers[0].value, src).toContain("max-age=86400"); });
+});

@@ -8,7 +8,7 @@ const p = products.find((x) => x.mrp)!;
 describe("ProductCard", () => {
   it("shows name, link, price and struck-through MRP", () => { const h = renderToStaticMarkup(<ProductCard p={p} />); expect(h).toContain(p.name); expect(h).toContain(`/products/${p.slug}"`); expect(h).toContain("line-through"); });
   it("uses a text tile without an image", () => expect(renderToStaticMarkup(<ProductCard p={p} />)).not.toContain("<img"));
-  it("uses an optimised image with alt text when present", () => { const h = renderToStaticMarkup(<ProductCard p={{ ...p, image: "https://res.cloudinary.com/x/image/upload/v1/a.jpg" }} />); expect(h).toContain("f_auto,q_auto,w_600"); expect(h).toContain(`alt="${p.name}"`); expect(h).toContain('loading="lazy"'); });
+  it("uses an optimised image with alt text when present", () => { const h = renderToStaticMarkup(<ProductCard p={{ ...p, image: "https://res.cloudinary.com/x/image/upload/v1/a.jpg" }} />); expect(h).toContain("f_auto,q_auto,c_limit,w_640"); expect(h).toContain(`alt="${p.name}"`); expect(h).toContain('loading="lazy"'); });
   it("prefers the category label from the database", () => expect(renderToStaticMarkup(<ProductCard p={{ ...p, categoryLabel: "Custom Label" }} />)).toContain("Custom Label"));
 });
 describe("layout helpers", () => {

@@ -16,3 +16,6 @@ export function envIssues(env: Record<string, string | undefined> = process.env)
 
 export const cloudinaryConfigured = (env: Record<string, string | undefined> = process.env) => !!(env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET);
 export const strictDomains = (env: Record<string, string | undefined> = process.env) => env.AFFILIATE_STRICT_DOMAINS === "1";
+
+/** Upper limit on library size: a guard against runaway Cloudinary storage. Override with MEDIA_MAX_ITEMS. */
+export const mediaMaxItems = (env: Record<string, string | undefined> = process.env) => { const n = Math.round(Number(env.MEDIA_MAX_ITEMS)); return n > 0 ? n : 500; };

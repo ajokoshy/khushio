@@ -1,28 +1,33 @@
 # Status against the requirements brief
 
-## Done in this iteration
-- **Fail closed:** production never serves sample data; database errors keep the last good static page instead of showing fakes.
-- **/go/[id]:** active/expiry/merchant checks, approved-domain validation, https-only, bot filtering, non-blocking click logging, 503 on database failure.
-- **Multi-offer products:** each product can have several retailers, edited one at a time (the old edit overwrote all offers of a product).
-- **Offer, deal and coupon lifecycle:** active flag, expiry, "last verified" dates; expired items disappear automatically; unverifiable claims removed from public copy.
-- **Archive instead of delete** for products; restore from the admin list. Product list has search, status filter and pagination.
-- **CSV import:** upload → preview with per-row reasons → confirm; existing products are never overwritten unless ticked; one atomic write.
-- **Collections** and **product + first offer** are saved atomically.
-- **Security:** CSP and security headers, no plain-text admin password in production, sessions bound to the password hash, `noreferrer` on affiliate links, safe JSON-LD, `/admin` never cached.
-- **SEO:** sitemap lists only real `lastModified` dates; no price asserted in Product JSON-LD; Organization + richer Article markup; custom 404 and error pages.
-- **Ops:** `/admin/status`, env validation, README, migration 008, database integration tests.
+## Done
+**Foundation and tranche 1:** fail-closed data layer, validated `/go/` redirects, multi-offer products, offer/deal/coupon lifecycle, archive instead of delete, safe import, security headers, hardened admin login.
 
-## Still pending (next tranches)
-1. **Offer-level price model** (price, currency, last checked per offer) and removing product-level price/MRP; product page and cards then show per-retailer prices.
-2. **Brand and category foreign keys**, slug-change redirects, redirects table and admin.
-3. **Search and caching:** Postgres full-text search, pagination on shop/category pages, tag-based revalidation, `loadProducts()` no longer reads the whole catalogue per page.
-4. **Homepage sections builder**, navigation menus, expanded site settings, editable legal pages, missing routes (`/deals/[slug]`, `/gifts/[occasion]`, `/journal/[category]`, curated `/compare/[slug]`, brands index, editorial policy, disclaimer).
-5. **Articles:** rich text or Markdown, drafts, scheduling, categories/tags, author, SEO fields, revisions.
-6. **Media library**, image provider abstraction, alt text and dimensions.
-7. **Users and roles**, account recovery, click reports and daily aggregates, duplicate-click handling.
-8. **Quality:** Playwright end-to-end tests, Lighthouse/accessibility passes, per-page SEO fields wired into metadata.
+**Phase 1 (data and commerce core):** per-retailer prices, brand/category foreign keys, category hierarchy, full-text search with filters, sorting and pagination, tagged caching and static generation, redirects (automatic on slug change), affiliate-links module, product preview, duplicate detection, import/export for every content table.
+
+**Phase 2 (content, homepage and media CMS):** homepage builder (16 section types, ordering, scheduling), typed site settings, editable navigation, editable legal/information pages (incl. editorial policy and disclaimer), journal (Markdown, drafts, scheduling, categories, tags, revisions, embeds, related content), media library with provider boundary, deal pages, gift occasions, curated comparisons, brands index, shared UI kit for new screens, and the cost controls in `docs/COSTS.md` (cost panel, housekeeping, image width limits, cache tiers).
+
+## Pending
+**Phase 3 (SEO, analytics, users, security)**
+- Per-page SEO fields for categories, brands and collections (products, articles and pages already have them); fuller structured data (item lists, FAQ).
+- Click reports in the admin (daily totals are kept; the report screens are not built), duplicate-click handling.
+- Roles and multi-user admin, account recovery (today: one owner login).
+- Privacy and cookie handling review, dependency audit, rate limiting on search.
+- Search type-ahead suggestions.
+
+**Phase 4 (quality and launch)**
+- Browser-based end-to-end tests (Playwright), Lighthouse and accessibility audits, keyboard testing of the admin, Content-Security-Policy check in a real browser.
+- Neon and Vercel setup guides, admin user guide, backup and restore drill, launch checklist, test report.
+
+**Smaller items left from earlier phases**
+- Older admin screens still use ad-hoc styling; only screens from Phase 2 onward use the shared UI kit. No style-guide page yet.
+- Articles use Markdown, not a visual editor. Homepage and menu reordering uses up/down buttons (no drag and drop). Menus are one level deep. No RSS feed.
+- Collections are not part of CSV export or import; site settings and the audit log are not exported.
+- A failed chunk in a very large import leaves earlier chunks saved (re-uploading the same file is safe).
+- Product-level `price`/`mrp` remain as a reference price.
 
 ## Not verified here
-- The CSP was checked only as response headers, not in a browser: confirm on a Vercel preview that pages, images and the admin still load, and loosen `next.config.mjs` if anything is blocked.
-- The production build was run with the Google Fonts imports stubbed (the sandbox cannot reach Google), so run `npm run build` once with network access.
-- Database tests ran against PostgreSQL 16 with a transaction shim for `db.batch`; Neon's real HTTP batch was not exercised. Apply migration 008 to a Neon branch first.
+- The production build and the live-page checks ran against a local PostgreSQL 16 with a `pg` driver substituted for Neon, and with the Google Fonts imports stubbed (the sandbox cannot reach Google). Run `npm run build` once with network access, and apply `db/upgrade-008-to-010.sql` to a Neon branch first.
+- Neon's HTTP `batch` was not exercised; the database tests use a transaction shim.
+- Cloudinary was exercised through a mocked network layer (the signed request and responses are checked), not a live account.
+- The Content-Security-Policy was checked as response headers only, not in a browser. Admin screens were built, type-checked and exercised through their actions, but not clicked through in a browser.
