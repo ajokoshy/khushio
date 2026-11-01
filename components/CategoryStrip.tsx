@@ -5,7 +5,7 @@ import { loadCategories } from "@/lib/data/catalog";
 const icons = { Shirt, Smartphone, Sparkles, Home, Baby, Dumbbell, Plane, BookOpen, Gift, ShoppingBag, Heart, Utensils };
 
 export async function CategoryStrip() {
-  const categories = await loadCategories();
+  const categories = (await loadCategories()).filter((c) => !c.parentId);
   return (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4 lg:grid-cols-8">
       {categories.map((c) => {
