@@ -4,13 +4,14 @@ import { strictDomains } from "@/lib/config/env";
 import { site } from "@/lib/config/site";
 import { resolveOffer } from "@/lib/data/catalog";
 import { db, schema } from "@/lib/db";
+import { maintainSometimes } from "@/lib/maintenance";
 
 const NO_STORE = { "Cache-Control": "no-store, max-age=0", "X-Robots-Tag": "noindex, nofollow" };
 const unavailable = () => new NextResponse("This link is no longer available.", { status: 404, headers: NO_STORE });
 
 /** Click logging is best effort: it runs after the response is sent and can never block or break the redirect. */
 function logClick(row: { offerId: string; merchantId: string | null; referrer: string | null }) {
-  const task = async () => { try { await db!.insert(schema.clicks).values(row); } catch { /* analytics must never affect visitors */ } };
+  const task = async () => { try { await db!.insert(schema.clicks).values(row); } catch { /* analytics must never affect visitors */ } await maintainSometimes(); };
   try { after(task); } catch { void task(); }
 }
 

@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
+import { CategoryStrip } from "@/components/CategoryStrip";
+import { Pagination, SearchBar } from "@/components/Listing";
 import { Grid, Page, PageHead, ProductCard } from "@/components/ProductCard";
-import { loadCategories, loadProducts } from "@/lib/data/catalog";
-export const metadata: Metadata = { title: "Shop", description: "Browse all products on Khushio.", alternates: { canonical: "/shop" } };
-const I = "rounded-lg border border-sand bg-white px-3 py-2 text-sm";
-export default async function Shop({ searchParams }: { searchParams: Promise<{ q?: string; cat?: string; sort?: string }> }) {
-  const sp = await searchParams, q = sp.q?.trim().toLowerCase();
-  const categories = await loadCategories();
-  let list = await loadProducts();
-  if (q) list = list.filter((p) => `${p.name} ${p.blurb} ${p.brand}`.toLowerCase().includes(q));
-  if (sp.cat) list = list.filter((p) => p.category === sp.cat);
-  if (sp.sort === "price-asc") list = [...list].sort((a, b) => a.price - b.price);
-  if (sp.sort === "price-desc") list = [...list].sort((a, b) => b.price - a.price);
-  return (<Page><PageHead title={q ? `Results for “${q}”` : "Shop"} />
-    <form role="search" className="mb-8 flex flex-wrap gap-3">
-      <input name="q" type="search" defaultValue={sp.q} placeholder="Search" aria-label="Search" className={I} />
-      <select name="cat" defaultValue={sp.cat ?? ""} aria-label="Category" className={I}><option value="">All categories</option>{categories.map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}</select>
-      <select name="sort" defaultValue={sp.sort ?? ""} aria-label="Sort" className={I}><option value="">Featured</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select>
-      <button className="rounded-full bg-forest px-5 py-2 text-sm font-medium text-ivory">Apply</button></form>
-    {list.length ? <Grid>{list.map((p) => <ProductCard key={p.slug} p={p} />)}</Grid> : <p>No products match yet. Try a broader word.</p>}</Page>);
+import { loadCategories, searchProducts } from "@/lib/data/catalog";
+import { listingSeo } from "@/lib/seo/listing";
+import { normalizeSearch } from "@/lib/search-core";
+type SP = Promise<Record<string, string | string[] | undefined>>;
+export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const s = listingSeo("/shop", await searchParams, { catIsFilter: true });
+  return { title: s.q ? `Results for “${s.q}”` : s.page > 1 ? `Shop (page ${s.page})` : "Shop", description: "Browse all products on Khushio.", alternates: { canonical: s.canonical }, robots: s.noindex ? { index: false, follow: true } : undefined };
+}
+export default async function Shop({ searchParams }: { searchParams: SP }) {
+  const sp = await searchParams, f = normalizeSearch(sp as Parameters<typeof normalizeSearch>[0]);
+  const [cats, r] = await Promise.all([loadCategories(), searchProducts(sp as Parameters<typeof normalizeSearch>[0])]);
+  const params = { q: f.q, cat: f.categories?.[0], min: f.min, max: f.max, sort: sp.sort as string | undefined };
+  return (<Page><PageHead title={f.q ? `Results for “${f.q}”` : "Shop"} intro={r.total ? `${r.total} product${r.total === 1 ? "" : "s"}` : undefined} />
+    <SearchBar action="/shop" q={f.q} cat={f.categories?.[0]} sort={f.sort} min={f.min} max={f.max} categories={cats} />
+    {r.items.length ? <><Grid>{r.items.map((p) => <ProductCard key={p.slug} p={p} />)}</Grid><Pagination path="/shop" params={params} page={r.page} pages={r.pages} /></>
+      : <NoResults />}</Page>);
+}
+async function NoResults() {
+  const featured = (await searchProducts({ sort: "featured", pageSize: 3 })).items;
+  return (<div><p className="mb-6">No products match. Try fewer or broader words, or remove a price limit.</p>
+    <h2 className="mb-4 font-display text-2xl font-semibold text-forest">Browse by category</h2><CategoryStrip />
+    {featured.length > 0 && <><h2 className="mb-4 mt-12 font-display text-2xl font-semibold text-forest">You might like</h2><Grid>{featured.map((p) => <ProductCard key={p.slug} p={p} />)}</Grid></>}</div>);
 }

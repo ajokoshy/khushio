@@ -8,12 +8,10 @@ import { site } from "@/lib/config/site";
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 const body = DM_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
 
-export const revalidate = 60;
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: { default: `${site.name}: ${site.tagline}`, template: `%s | ${site.name}` },
   description: site.description,
-  alternates: { canonical: "/" },
   openGraph: { siteName: site.name, type: "website", locale: "en_IN", images: ["/og.jpg"] },
   twitter: { card: "summary_large_image", images: ["/og.jpg"] },
 };
