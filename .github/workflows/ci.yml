@@ -58,11 +58,6 @@ jobs:
       - run: npm ci
       - name: Generate a throwaway AUTH_SECRET
         run: echo "AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
-      - name: Seed E2E users
-        if: ${{ env.DATABASE_URL != '' && env.E2E_ADMIN_PASSWORD != '' }}
-        run: npm run test:e2e:seed
-        env:
-          E2E_SEED_CONFIRM: "yes"
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npx playwright test
