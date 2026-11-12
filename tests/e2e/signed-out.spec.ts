@@ -27,6 +27,8 @@ test("there is no public registration", async ({ page, request }) => {
 });
 
 test("a wrong password shows one generic error", async ({ page }) => {
+  // Login looks the user up in Postgres, so this check needs a database (the Neon test branch in CI).
+  test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL (Neon test branch)");
   await page.goto("/admin-login");
   await page.getByLabel("Email").fill(`nobody-${Date.now()}@example.test`);
   await page.getByLabel("Password").fill("not-the-password");
