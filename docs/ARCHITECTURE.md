@@ -10,7 +10,8 @@ Single Next.js (App Router) modular monolith. Layers, top to bottom:
 
 ## Decisions
 - **Design tokens** come from the supplied logo: forest green `#25402D`, coral `#E2714D`, cream `#FAF5EA`. Fraunces (display) + Jost (text).
-- **DB**: Neon pooled URL for the app (`DATABASE_URL`), direct URL for migrations (`DATABASE_URL_UNPOOLED`). HTTP driver, lazy client.
+- **DB**: Neon pooled URL for the app (`DATABASE_URL`). HTTP driver, lazy client. Schema is built and upgraded by re-runnable SQL files pasted into the Neon SQL Editor (`drizzle/migrations`, one file per release).
+- **Admin login**: email and bcrypt hash in the `users` table; every active user is a super admin. No admin credentials in env or code (see `docs/AUTH.md`).
 - **Money**: integer minor units + explicit ISO currency.
 - **Images**: Cloudinary public IDs in Postgres; `images.unoptimized` so Vercel does no image processing.
 - **Clicks**: raw `affiliate_clicks` (short retention, no IP) + `affiliate_click_daily` roll-up.

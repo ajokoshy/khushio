@@ -5,7 +5,7 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 ## Core (shared by all modules)
 | Folder | What it holds |
 | --- | --- |
-| `core/auth` | Auth.js config, credentials sign-in, password hashing, login rate limiting |
+| `core/auth` | Auth.js config, credentials sign-in against the `users` table, password hashing |
 | `core/permissions` | Permission keys, role matrix, `requirePermission`, RBAC seed |
 | `core/audit` | `logAudit`, audit list for the viewer |
 | `core/database` | Neon client and Drizzle schema |

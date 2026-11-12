@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN, ADMIN_STATE, ANALYST, SIGNED_OUT, hasAdmin, hasAnalyst, signIn } from "./helpers";
+import { ADMIN, ADMIN_STATE, SIGNED_OUT, hasAdmin, signIn } from "./helpers";
 
 test.describe("signed in as super admin", () => {
   test.skip(!hasAdmin, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD (see docs/AUTH.md)");
@@ -41,27 +41,15 @@ test.describe("sign in and out", () => {
     await expect(page).toHaveURL(/\/admin-login/);
     await page.goto("/admin/dashboard");
     await expect(page).toHaveURL(/\/admin-login/);
+
+    // Signing in again, the previous sign-out must be in the audit log.
+    await signIn(page, ADMIN);
+    await page.goto(`/admin/audit?q=${encodeURIComponent("auth.logout")}`);
+    await expect(page.getByRole("cell", { name: "auth.logout" }).first()).toBeVisible();
   });
 
   test("ignores an off-site callbackUrl", async ({ page }) => {
     await signIn(page, ADMIN, "https://evil.example");
     expect(new URL(page.url()).hostname).not.toContain("evil");
-  });
-});
-
-test.describe("signed in as analyst", () => {
-  test.skip(!hasAnalyst, "Set E2E_ANALYST_EMAIL and E2E_ANALYST_PASSWORD (see docs/AUTH.md)");
-  test.use({ storageState: SIGNED_OUT });
-
-  test("lacks audit access: link hidden, page answers 403", async ({ page }) => {
-    await signIn(page, ANALYST);
-    await expect(page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Audit log" })).toHaveCount(0);
-
-    const res = await page.goto("/admin/audit");
-    expect(res?.status()).toBe(403);
-    await expect(page.getByRole("heading", { name: "Access denied" })).toBeVisible();
-
-    const api = await page.request.get("/api/admin/me");
-    expect(api.status()).toBe(200);
   });
 });

@@ -17,6 +17,16 @@ describe("password hashing", () => {
   });
 });
 
+describe("hashes made by Postgres pgcrypto (set-admin.sql)", () => {
+  // set-admin.sql stores crypt(password, gen_salt('bf', 12)), which produces $2a$ hashes.
+  // These are published bcrypt test vectors: the app must accept the $2a$ prefix.
+  it("verifies $2a$ bcrypt hashes", async () => {
+    expect(await verifyPassword("U*U", "$2a$05$CCCCCCCCCCCCCCCCCCCCC.E5YPO9kmyuRGyh0XouQYb4YMJKvyOeW")).toBe(true);
+    expect(await verifyPassword("abc", "$2a$06$If6bvum7DFjUnE9p2uDeDu0YHzrHM6tf.iqN8.yx.jNN1ILEf7h0i")).toBe(true);
+    expect(await verifyPassword("abd", "$2a$06$If6bvum7DFjUnE9p2uDeDu0YHzrHM6tf.iqN8.yx.jNN1ILEf7h0i")).toBe(false);
+  });
+});
+
 describe("login schema", () => {
   it("normalises the email", () => {
     const r = loginSchema.parse({ email: "  Admin@Khushio.COM ", password: "x" });

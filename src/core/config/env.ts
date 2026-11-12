@@ -7,9 +7,6 @@ const schema = z.object({
   DATABASE_URL_UNPOOLED: z.string().url().optional(),
   AUTH_SECRET: z.string().min(32).optional(),
   AUTH_TRUST_HOST: z.string().optional(),
-  // Local-only, read by scripts/create-admin.ts. Do not set these in Vercel.
-  ADMIN_EMAIL: z.string().optional(),
-  ADMIN_NAME: z.string().optional(),
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
