@@ -24,11 +24,23 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
   await insertAuditRows([toRow(entry)]);
 }
 
+/**
+ * For admin writes that have ALREADY succeeded: a failed audit insert is logged to the server console
+ * instead of turning a completed change into an error (a retry would duplicate it).
+ */
+export async function logAuditBestEffort(entry: AuditEntry): Promise<void> {
+  try {
+    await logAudit(entry);
+  } catch (error) {
+    console.error(`Audit write failed for ${entry.action}`, error);
+  }
+}
+
 export async function logAuditMany(entries: AuditEntry[]): Promise<void> {
   await insertAuditRows(entries.map(toRow));
 }
 
-export type AuditListInput = { q?: string; includeAttempts?: boolean; limit: number; offset: number };
+export type AuditListInput = { q?: string; limit: number; offset: number };
 
 /** Reads limit+1 rows so the viewer knows whether a next page exists without a count query. */
 export async function listAuditLogs(input: AuditListInput) {

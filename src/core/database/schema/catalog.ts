@@ -1,4 +1,5 @@
-import { pgTable, pgEnum, text, uuid, integer, boolean, index, primaryKey, timestamp, char } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { pgTable, pgEnum, text, uuid, integer, boolean, index, uniqueIndex, primaryKey, timestamp, char } from "drizzle-orm/pg-core";
 import { id, createdAt, updatedAt } from "./_shared";
 
 export const productStatus = pgEnum("product_status", [
@@ -12,6 +13,8 @@ export const brands = pgTable("brands", {
   description: text("description"),
   logoUrl: text("logo_url"),
   isFeatured: boolean("is_featured").notNull().default(false),
+  /** Release 3A: archived brands are hidden but keep their products. Never delete a brand that products use. */
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -26,7 +29,14 @@ export const categories = pgTable("categories", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (t) => [index("categories_parent_idx").on(t.parentId)]);
+}, (t) => [
+  index("categories_parent_idx").on(t.parentId),
+  /** Release 3A: one category name per parent, ignoring case. Top-level categories share one "no parent" bucket. */
+  uniqueIndex("categories_parent_name_uq").on(
+    sql`coalesce(${t.parentId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+    sql`lower(${t.name})`,
+  ),
+]);
 
 export const products = pgTable("products", {
   id: id(),

@@ -2,8 +2,10 @@ import { AUTH_AUDIT } from "@/core/audit/constants";
 import { logAudit } from "@/core/audit";
 import { ALL_PERMISSION_KEYS } from "@/core/permissions/keys";
 import { ROLES } from "@/core/permissions/matrix";
+import { checkLoginAllowed, clearLoginFailures, recordFailedLogin } from "./login-throttle";
 import { verifyPassword } from "./password";
 import * as repo from "./repository";
+import { UNKNOWN_IP } from "./throttle";
 import type { AuthUser } from "./types";
 import { loginSchema } from "./validation";
 
@@ -21,16 +23,45 @@ const OWNER_PERMISSIONS = [...ALL_PERMISSION_KEYS];
  */
 const TIMING_EQUALISER_HASH = "$2b$12$Kd0wK/OMkF8Uwk1j3vd41e.fF5GbkS0qmU.td7usENo5Irm2l3JZK";
 
-/** Called by the Auth.js credentials provider. Returns the user for the session, or null. */
-export async function authenticate(raw: unknown): Promise<AuthUser | null> {
+export type LoginContext = {
+  /** Client address, from clientIpFromHeaders(). Only its keyed hash is stored. */
+  ip: string;
+};
+
+/**
+ * Called by the Auth.js credentials provider. Returns the user for the session, or null.
+ *
+ * Rate limiting (Release 2C) runs here so every path to sign-in is covered: a blocked email or IP
+ * is refused BEFORE the password is checked, so even the right password gets nowhere until the
+ * window passes. Blocked attempts are not recorded (the block lifts at most 15 minutes after the
+ * last real failure). Failures are recorded as keyed hashes only.
+ */
+export async function authenticate(raw: unknown, context: LoginContext = { ip: UNKNOWN_IP }): Promise<AuthUser | null> {
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) return null;
   const { email, password } = parsed.data;
 
+  // Fail closed: if the limiter cannot be read, the sign-in does not go ahead.
+  const decision = await checkLoginAllowed(email, context.ip);
+  if (!decision.allowed) return null;
+
   const user = await repo.findUserByEmail(email);
   const passwordOk = await verifyPassword(password, user?.passwordHash ?? TIMING_EQUALISER_HASH);
-  if (!user || !user.isActive || !passwordOk) return null;
+  if (!user || !user.isActive || !passwordOk) {
+    try {
+      await recordFailedLogin(email, context.ip);
+    } catch (error) {
+      console.error("Could not record a failed login", error);
+    }
+    return null;
+  }
 
+  try {
+    await clearLoginFailures(email);
+  } catch (error) {
+    // Housekeeping must not lock the owner out.
+    console.error("Could not clear login failures", error);
+  }
   await repo.touchLastLogin(user.id);
   try {
     await logAudit({ actor: user.id, action: AUTH_AUDIT.loginSuccess, entityType: "user", entityId: user.id });

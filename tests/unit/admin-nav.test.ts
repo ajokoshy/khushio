@@ -17,6 +17,14 @@ describe("admin navigation", () => {
     }
   });
 
+  it("shows the catalogue screens to catalog_manager only, not to analyst or editor", () => {
+    const catalogue = ["Categories", "Brands", "Merchants"];
+    expect(labels(ROLE_PERMISSIONS[ROLES.catalogManager])).toEqual(expect.arrayContaining(catalogue));
+    for (const role of [ROLES.analyst, ROLES.editor]) {
+      for (const label of catalogue) expect(labels(ROLE_PERMISSIONS[role])).not.toContain(label);
+    }
+  });
+
   it("shows nothing without permissions", () => {
     expect(visibleAdminNav([])).toEqual([]);
     expect(visibleAdminNav(undefined)).toEqual([]);

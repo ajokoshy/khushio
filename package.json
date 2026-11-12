@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "db:studio": "drizzle-kit studio",
     "db:seed-rbac": "tsx --env-file=.env.local scripts/seed-rbac.ts",
+    "db:seed-dev": "tsx --env-file=.env.local scripts/seed-dev.ts",
     "auth:hash-password": "tsx scripts/hash-password.ts"
   },
   "dependencies": {

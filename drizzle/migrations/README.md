@@ -15,7 +15,9 @@ fails if the result differs from the Drizzle schema, so the two cannot drift apa
 | --- | --- | --- | --- |
 | 1 | `khushio-sql-firstload.sql` | Everything that exists up to Release 2B: extension, all tables, foreign keys, indexes, roles and permissions | Once per new database (any host). Re-running is harmless |
 | 2 | `set-admin.sql` | Creates the admin user, or changes the admin's password, name or email | After firstload, and whenever you need to change the admin |
-| 3 | `khushio-sql-phase-<release>.sql` | The database changes of one release, for example `khushio-sql-phase-3a.sql` | Once per release, in release order, **before** deploying that release's code |
+| 3 | `khushio-sql-phase-2c.sql` | Release 2C: `login_attempts` table for login rate limiting | Once, before deploying 2C |
+| 4 | `khushio-sql-phase-3a.sql` | Release 3A: `brands.is_active`, unique category name per parent | Once, before deploying 3A |
+| later | `khushio-sql-phase-<release>.sql` | The database changes of one release, for example `khushio-sql-phase-3a.sql` | Once per release, in release order, **before** deploying that release's code |
 
 `firstload` is never edited again after Release 2B. Each later release adds its **own** file (even a
 release with no schema change gets a small file with a comment and the status query, so the list
@@ -28,8 +30,8 @@ always shows which releases your database has seen).
 3. Read the result grid at the bottom of the file (each file ends with a status query).
 4. Production only: first create a Neon branch from production named `backup-<release>-<date>`.
 
-A new empty database needs just two runs: `khushio-sql-firstload.sql`, then `set-admin.sql`
-(plus any `khushio-sql-phase-*.sql` files that exist, in name order).
+A new empty database needs `khushio-sql-firstload.sql`, then `set-admin.sql`, then every
+`khushio-sql-phase-*.sql` in name order (today: `phase-2c`, then `phase-3a`).
 
 ## Rules for writing a release script (for Claude and for you)
 

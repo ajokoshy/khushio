@@ -1,6 +1,7 @@
 /** Revalidation windows in seconds. Configurable in one place (brief §14). */
 export const CACHE_TTL = {
   categories: 60 * 60 * 24,
+  brands: 60 * 60 * 24,
   merchants: 60 * 60 * 24,
   products: 60 * 30,
   homepage: 60 * 10,
@@ -12,6 +13,7 @@ export const CACHE_TTL = {
 export const CACHE_TAGS = {
   products: "products",
   categories: "categories",
+  brands: "brands",
   merchants: "merchants",
   deals: "deals",
   homepage: "homepage",

@@ -4,7 +4,7 @@ import { requirePagePermission } from "@/core/permissions/require";
 import { DataTable, type Column } from "@/shared/admin/data-table";
 import { EmptyState } from "@/shared/admin/empty-state";
 import { ListToolbar } from "@/shared/admin/list-toolbar";
-import { firstParam, parseListParams, type SearchParams } from "@/shared/admin/list-params";
+import { parseListParams, type SearchParams } from "@/shared/admin/list-params";
 import { Pagination } from "@/shared/admin/pagination";
 
 export const metadata = { title: "Audit log", robots: { index: false } };
@@ -32,21 +32,15 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
 
   const sp = await searchParams;
   const { page, pageSize, offset, q } = parseListParams(sp, { pageSize: 25 });
-  const includeAttempts = firstParam(sp.attempts) === "1";
 
-  const { rows, hasNext } = await listAuditLogs({ q, includeAttempts, limit: pageSize, offset });
+  const { rows, hasNext } = await listAuditLogs({ q, limit: pageSize, offset });
 
   return (
     <>
       <h1 className="text-3xl">Audit log</h1>
       <p className="mt-2 mb-6 text-ink-600">Who did what, newest first.</p>
 
-      <ListToolbar action="/admin/audit" q={q} placeholder="Search action, entity or actor email">
-        <label className="flex items-center gap-2 py-2 text-sm">
-          <input type="checkbox" name="attempts" value="1" defaultChecked={includeAttempts} />
-          Include failed-login counters
-        </label>
-      </ListToolbar>
+      <ListToolbar action="/admin/audit" q={q} placeholder="Search action, entity or actor email" />
 
       <DataTable
         caption="Audit log entries"
@@ -55,7 +49,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         getRowKey={(r) => r.id}
         empty={<EmptyState title="No entries match" description="Try a different search, or clear the filters." />}
       />
-      <Pagination basePath="/admin/audit" params={{ q, attempts: includeAttempts }} page={page} hasNext={hasNext} />
+      <Pagination basePath="/admin/audit" params={{ q }} page={page} hasNext={hasNext} />
     </>
   );
 }

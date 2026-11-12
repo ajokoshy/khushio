@@ -1,8 +1,7 @@
-import { and, desc, eq, ilike, ne, or } from "drizzle-orm";
+import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { auditLogs, users } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
-import { LOGIN_ATTEMPT_ENTITY } from "./constants";
 
 export type AuditRow = {
   actorId?: string | null;
@@ -25,11 +24,10 @@ export async function insertAuditRows(rows: AuditRow[]) {
   );
 }
 
-export type AuditQuery = { q?: string; includeAttempts?: boolean; limit: number; offset: number };
+export type AuditQuery = { q?: string; limit: number; offset: number };
 
-export async function selectAuditLogs({ q, includeAttempts, limit, offset }: AuditQuery) {
+export async function selectAuditLogs({ q, limit, offset }: AuditQuery) {
   const conditions = [];
-  if (!includeAttempts) conditions.push(ne(auditLogs.entityType, LOGIN_ATTEMPT_ENTITY));
   if (q) {
     const like = `%${escapeLike(q)}%`;
     conditions.push(

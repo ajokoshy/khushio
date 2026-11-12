@@ -175,3 +175,45 @@ describe("set-admin.sql", () => {
     await expect(db.exec(render({ email: "x@khushio.test", replace_email: "ghost@khushio.test", password: "third-password-789" }))).rejects.toThrow(/No user with email/);
   });
 });
+
+describe("khushio-sql-phase-2c.sql (login rate limiting)", () => {
+  it("creates login_attempts holding hashes only: no raw email or IP column", async () => {
+    const { rows } = await db.query<{ column_name: string }>("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'login_attempts'");
+    expect(rows.map((r) => r.column_name).sort()).toEqual(["created_at", "email_hash", "id", "ip_hash"]);
+  });
+
+  it("is a new table only: running it on a database that already has rows keeps them", async () => {
+    await db.exec("INSERT INTO login_attempts (email_hash, ip_hash) VALUES ('e', 'i')");
+    await db.exec(read("khushio-sql-phase-2c.sql"));
+    expect(Number((await db.query<{ n: number }>("SELECT count(*) AS n FROM login_attempts")).rows[0]?.n)).toBe(1);
+    await db.exec("DELETE FROM login_attempts");
+  });
+});
+
+describe("khushio-sql-phase-3a.sql (categories, brands, merchants)", () => {
+  it("adds brands.is_active as NOT NULL DEFAULT true, so existing rows and the old code stay valid", async () => {
+    await db.exec("INSERT INTO brands (slug, name) VALUES ('old-code-brand', 'Old code brand')"); // an insert that does not know the column
+    const { rows } = await db.query<{ is_active: boolean }>("SELECT is_active FROM brands WHERE slug = 'old-code-brand'");
+    expect(rows[0]?.is_active).toBe(true);
+    await db.exec("DELETE FROM brands WHERE slug = 'old-code-brand'");
+  });
+
+  it("allows one category name per parent, ignoring case, including among top-level categories", async () => {
+    await db.exec("INSERT INTO categories (id, slug, name) VALUES ('11111111-1111-1111-1111-111111111111', 'fashion', 'Fashion')");
+    await expect(db.exec("INSERT INTO categories (slug, name) VALUES ('fashion-2', 'FASHION')")).rejects.toThrow(/categories_parent_name_uq/);
+
+    await db.exec("INSERT INTO categories (slug, name, parent_id) VALUES ('fashion-shoes', 'Shoes', '11111111-1111-1111-1111-111111111111')");
+    await expect(db.exec("INSERT INTO categories (slug, name, parent_id) VALUES ('fashion-shoes-2', 'shoes', '11111111-1111-1111-1111-111111111111')")).rejects.toThrow(/categories_parent_name_uq/);
+
+    // The same name under a different parent (or at the top level) is fine.
+    await db.exec("INSERT INTO categories (slug, name) VALUES ('shoes', 'Shoes')");
+    await db.exec("DELETE FROM categories");
+  });
+
+  it("is safe to run on a database that already has data", async () => {
+    await db.exec("INSERT INTO categories (slug, name) VALUES ('keep-me', 'Keep me')");
+    await db.exec(read("khushio-sql-phase-3a.sql"));
+    expect(Number((await db.query<{ n: number }>("SELECT count(*) AS n FROM categories")).rows[0]?.n)).toBe(1);
+    await db.exec("DELETE FROM categories");
+  });
+});

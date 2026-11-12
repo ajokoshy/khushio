@@ -6,5 +6,7 @@ Fill in at the end of every release (guide section 7.4). If any figure is above 
 | --- | --- | --- | --- | --- | --- |
 | 2A | | | | | |
 | 2B | | | | | Dashboard counts are cached 60 s: expect about 3 small queries per minute while an admin is on the page |
+| 2C | | | | | Login: one small indexed read per attempt (two from the form), one insert per failure, nothing for visitors |
+| 3A | | | | | Admin reads of categories are cached 24 h (tag `categories`); lists of brands and merchants are paged (limit + 1 rows, no count queries) |
 
 Targets from 7B: LCP 2.5 s or less, INP 200 ms or less, CLS 0.1 or less.

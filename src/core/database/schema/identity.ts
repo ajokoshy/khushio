@@ -43,3 +43,17 @@ export const auditLogs = pgTable("audit_logs", {
   metadata: jsonb("metadata"),
   createdAt: createdAt(),
 }, (t) => [index("audit_entity_idx").on(t.entityType, t.entityId), index("audit_created_idx").on(t.createdAt)]);
+
+/**
+ * Failed sign-in attempts, used by the login rate limiter (Release 2C). Only keyed HMAC hashes are
+ * stored (see src/core/auth/throttle.ts), never the raw email or IP address.
+ */
+export const loginAttempts = pgTable("login_attempts", {
+  id: id(),
+  emailHash: text("email_hash").notNull(),
+  ipHash: text("ip_hash").notNull(),
+  createdAt: createdAt(),
+}, (t) => [
+  index("login_attempts_email_idx").on(t.emailHash, t.createdAt),
+  index("login_attempts_ip_idx").on(t.ipHash, t.createdAt),
+]);

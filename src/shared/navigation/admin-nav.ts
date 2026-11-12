@@ -1,6 +1,6 @@
 import { hasPermission, PERMISSIONS as P, type PermissionKey } from "@/core/permissions";
 
-export type AdminNavIcon = "dashboard" | "audit";
+export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants";
 
 export type AdminNavItem = {
   label: string;
@@ -12,10 +12,13 @@ export type AdminNavItem = {
 
 /**
  * The single source for admin navigation. Later phases add one entry per admin screen they ship
- * (and one icon in src/shared/layouts/admin-nav.tsx); nothing else changes.
+ * (and one icon in src/shared/layouts/admin-frame.tsx); nothing else changes.
  */
 export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "dashboard", permission: P.dashboardView },
+  { label: "Categories", href: "/admin/categories", icon: "categories", permission: P.categoryWrite },
+  { label: "Brands", href: "/admin/brands", icon: "brands", permission: P.brandWrite },
+  { label: "Merchants", href: "/admin/merchants", icon: "merchants", permission: P.merchantWrite },
   { label: "Audit log", href: "/admin/audit", icon: "audit", permission: P.auditView },
 ];
 
