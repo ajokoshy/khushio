@@ -1,5 +1,7 @@
 # Status
 
+**Standing instruction for Claude:** every time you deliver a new code zip, deliver the updated project guide (Khushio_Project_Guide_and_Phased_Roadmap.docx) in the same reply: raise the version and the "built up to" line, update section 2 (status and what was verified), the release's own section, sections 7.5 and 8, section 19, and say what was not run. See guide section 5, rule 7.
+
 Last updated at the end of Releases 2C and 3A. **Built up to Release 3A.** Next: Release 3B (products, variants, Cloudinary uploads).
 
 ## Phase 1: foundation (done)
