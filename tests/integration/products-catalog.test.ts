@@ -207,7 +207,9 @@ describe("public catalogue (3C)", () => {
     expect(await names({}, { categoryIds: fashion.scopeIds })).not.toContain("Canvas Tote");
     expect(await names({ brand: "acme" })).toEqual(["Aero Running Shoes"]);
     expect(await names({ category: "bags" })).toEqual(["Canvas Tote"]);
-    expect(await names({ min: "700", max: "1000" })).toEqual(["Budget Slip-ons"]);
+    // Canvas Tote costs ₹999, so a 700 to 1000 range correctly includes it; 700 to 900 leaves only the slip-ons (₹799 and ₹899).
+    expect((await names({ min: "700", max: "1000" })).sort()).toEqual(["Budget Slip-ons", "Canvas Tote"]);
+    expect(await names({ min: "700", max: "900" })).toEqual(["Budget Slip-ons"]);
     expect(await names({ min: "4000" })).toEqual(["Aero Running Shoes"]);
     expect(await names({ brand: "no-such-brand" })).toEqual([]);
   });

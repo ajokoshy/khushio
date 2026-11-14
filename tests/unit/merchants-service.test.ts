@@ -8,7 +8,7 @@ const audit = vi.hoisted(() => vi.fn());
 const revalidate = vi.hoisted(() => vi.fn());
 vi.mock("@/modules/merchants/repository", () => repo);
 vi.mock("@/core/audit", () => ({ logAuditBestEffort: (...a: unknown[]) => audit(...a) }));
-vi.mock("next/cache", () => ({ revalidateTag: (...a: unknown[]) => revalidate(...a) }));
+vi.mock("next/cache", () => ({ revalidateTag: (...a: unknown[]) => revalidate(...a), unstable_cache: <T extends (...a: never[]) => unknown>(fn: T) => fn }));
 
 import * as service from "@/modules/merchants/service";
 import type { MerchantInput } from "@/modules/merchants/validation";
