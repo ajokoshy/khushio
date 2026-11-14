@@ -2,7 +2,7 @@ import { and, asc, count, eq, ilike, isNull, like, or, sql, type SQL } from "dri
 import { db } from "@/core/database/client";
 import { brands, categories, productCategories, products } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
-import type { BrandRow, BrandWrite, CategoryRow, CategoryWrite, StatusFilter } from "./types";
+import type { BrandOption, BrandRow, BrandWrite, CategoryRow, CategoryWrite, StatusFilter } from "./types";
 
 /** Repository: the only code in this module that talks to the database. */
 
@@ -148,4 +148,19 @@ export async function deleteBrandRow(id: string): Promise<void> {
 export async function countProductsForBrand(id: string): Promise<number> {
   const [row] = await db().select({ n: count() }).from(products).where(eq(products.brandId, id));
   return Number(row?.n ?? 0);
+}
+
+/** Active brands for pickers and filters. A shop will not have thousands; the cap keeps a bad import from loading the table. */
+export async function selectActiveBrandOptions(): Promise<BrandOption[]> {
+  return db()
+    .select({ id: brands.id, slug: brands.slug, name: brands.name })
+    .from(brands)
+    .where(eq(brands.isActive, true))
+    .orderBy(asc(sql`lower(${brands.name})`), asc(brands.id))
+    .limit(1000);
+}
+
+export async function selectActiveBrandBySlug(slug: string): Promise<BrandRow | null> {
+  const [row] = await db().select(brandColumns).from(brands).where(and(eq(brands.slug, slug), eq(brands.isActive, true))).limit(1);
+  return row ?? null;
 }

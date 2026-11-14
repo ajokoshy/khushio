@@ -19,6 +19,7 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 | `layouts/admin-frame.tsx` | Responsive sidebar + top bar |
 | `admin/data-table.tsx`, `list-toolbar.tsx`, `pagination.tsx`, `list-params.ts` | Server-paginated, searchable tables driven by URL parameters |
 | `admin/form-field.tsx`, `confirm-dialog.tsx`, `toast.tsx`, `empty-state.tsx` | Form and feedback building blocks |
+| `catalog/*` | Release 3C: product image, card, grid, filter bar, cursor pager, breadcrumbs, listing body |
 | `admin/form-state.ts`, `action-helpers.ts`, `submit-button.tsx`, `confirm-action-button.tsx`, `notice.tsx`, `status.tsx` | Release 3A: form errors that keep what was typed, one error mapping for every server action, archive/delete confirmation, list status filter |
 
 ## Domain modules
@@ -27,6 +28,9 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 | dashboard | counts for the admin dashboard (cached 60 s) | 2B |
 | discover (categories, brands) | admin CRUD, tree, archive rules (`repository`, `service`, `validation`, `tree`, `types`) | 3A |
 | merchants | admin CRUD, allowed-domains editor and normaliser (`domains.ts`) | 3A |
+| products | admin products: variants, categories, attributes, tags, images, status rules (`repository`, `service`, `validation`, `form`, `rules`, `types`) | 3B |
+| media | media library: one row per Cloudinary file, de-duplicated by hash, alt text, unused report | 3B |
+| catalog | public reads only: visible products, search, filters, cursor pages, product page, collections (`repository`, `service`, `cursor`, `filters`, `seo`) | 3C |
 | affiliate | folder only | 4A |
 | deals | folder only | 5A |
 | content | folder only | 6A |
@@ -44,3 +48,16 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 2. One entry in `ADMIN_NAV` (and an icon in `admin-frame.tsx` if new).
 3. List pages: `parseListParams`, `ListToolbar`, `DataTable`, `Pagination`; fetch `limit + 1` rows instead of counting.
 4. Writes: Zod, `requirePermission`, `logAudit`, `revalidateTag`.
+
+## Release 3B rules worth knowing
+- **One atomic write.** A product and its categories, attributes, tags and variants are saved together by `runAtomically` (`src/core/database/atomic.ts`): Neon's HTTP driver sends the statements as one transaction (`db.batch`), the embedded test database uses a real transaction. Never `await` a statement inside the builder.
+- **Visibility is one rule** (`src/core/catalog/visibility.ts`): PUBLISHED, or SCHEDULED whose `publish_at` has passed. No cron. Every public query uses it.
+- **Status permissions** (`rules.ts`): without `product:publish` a person can edit and move between Draft and In review, but cannot publish, schedule, archive or pull a live product back. New products start as Draft or In review; publishing needs a main category and one image.
+- **Variants** keep their id across edits (update in place), new rows are added, missing rows deleted. Prices are integer minor units; the form takes normal amounts and refuses extra decimals (`src/core/validation/money.ts`). Dates are typed in India time (`datetime.ts`).
+- **Images** go from the browser straight to Cloudinary with a server-made signature; the server verifies the response signature, folder, format, size and dimensions before saving. See `docs/IMAGES.md`.
+
+## Release 3C rules worth knowing
+- **Public pages** read only `modules/catalog` (plus the cached category, brand and merchant lookups). A draft, archived or not-yet-live product is a 404 everywhere, including the sitemap.
+- **Search** is Postgres full-text (`websearch_to_tsquery`, name weighs more than summary and description), plus brand name and tag matches, plus an exact-name boost. Nothing matched on the first page: it retries with trigram similarity on the name (typos). Searches are not cached; everything else is cached 30 minutes under tag `products`, which every product write clears.
+- **Cursor paging**, no OFFSET and no counts: `limit + 1` rows, the last row gives the cursor (`cursor.ts` validates every field, a bad cursor means the first page).
+- **Filters** are plain query parameters (`q`, `brand`, `category`, `min`, `max`, `sort`, `cursor`). Filtered, searched and paged views are `noindex,follow` with the plain page as canonical.

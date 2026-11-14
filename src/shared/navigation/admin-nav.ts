@@ -1,6 +1,6 @@
 import { hasPermission, PERMISSIONS as P, type PermissionKey } from "@/core/permissions";
 
-export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants";
+export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media";
 
 export type AdminNavItem = {
   label: string;
@@ -16,6 +16,8 @@ export type AdminNavItem = {
  */
 export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "dashboard", permission: P.dashboardView },
+  { label: "Products", href: "/admin/products", icon: "products", permission: P.productRead },
+  { label: "Media", href: "/admin/media", icon: "media", permission: P.mediaWrite },
   { label: "Categories", href: "/admin/categories", icon: "categories", permission: P.categoryWrite },
   { label: "Brands", href: "/admin/brands", icon: "brands", permission: P.brandWrite },
   { label: "Merchants", href: "/admin/merchants", icon: "merchants", permission: P.merchantWrite },

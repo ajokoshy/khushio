@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { pgTable, text, uuid, integer, boolean, index, uniqueIndex, date, timestamp, char } from "drizzle-orm/pg-core";
 import { id, createdAt, updatedAt } from "./_shared";
 import { products } from "./catalog";
@@ -43,7 +44,12 @@ export const affiliateLinks = pgTable("affiliate_links", {
   lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (t) => [index("links_product_idx").on(t.productId), index("links_merchant_idx").on(t.merchantId)]);
+}, (t) => [
+  index("links_product_idx").on(t.productId),
+  index("links_merchant_idx").on(t.merchantId),
+  /** Release 3C: the products of one store (merchant page). */
+  index("links_merchant_product_idx").on(t.merchantId, t.productId).where(sql`${t.isActive}`),
+]);
 
 /** Raw events with short retention. No full IP addresses are stored. */
 export const affiliateClicks = pgTable("affiliate_clicks", {

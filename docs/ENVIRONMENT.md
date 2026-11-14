@@ -12,7 +12,7 @@ Validated in `src/core/config/env.ts` (Zod). Empty values count as unset. Never 
 | TEST_DATABASE_URL | local, CI | no | Neon `test` branch. `tests/integration/neon-smoke.test.ts` runs when it is set and checks the branch has every table and the 2C and 3A additions (read-only). The other integration tests use an embedded Postgres and need nothing |
 | E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD | local, CI | no | Playwright admin (`e2e-admin@example.test`), created on the Neon **test** branch with `set-admin.sql`. Enables signed-in browser tests |
 | E2E_BASE_URL | local, CI | no | Run Playwright against an existing URL (for example a preview) instead of starting a server |
-| CLOUDINARY_CLOUD_NAME, _API_KEY, _API_SECRET | Vercel | from Phase 3B | Secret is server-only |
+| CLOUDINARY_CLOUD_NAME, _API_KEY, _API_SECRET | Vercel | from Release 3B | Needed for image uploads and for showing images. Without them uploads are switched off (the product screen says so) and pages show a placeholder. Secret is server-only |
 | CRON_SECRET | Vercel | from Phase 4B | Protects the daily roll-up route |
 
 Rule: nothing secret has a `NEXT_PUBLIC_` prefix.

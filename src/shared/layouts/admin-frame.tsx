@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { FolderTree, LayoutDashboard, Menu, ScrollText, Store, Tag, X, type LucideIcon } from "lucide-react";
+import { FolderTree, Image as ImageIcon, LayoutDashboard, Menu, Package, ScrollText, Store, Tag, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { AdminNavIcon } from "@/shared/navigation/admin-nav";
 import { cn } from "@/shared/ui/cn";
@@ -13,6 +13,8 @@ const ICONS: Record<AdminNavIcon, LucideIcon> = {
   categories: FolderTree,
   brands: Tag,
   merchants: Store,
+  products: Package,
+  media: ImageIcon,
 };
 
 type Item = { label: string; href: string; icon: AdminNavIcon };

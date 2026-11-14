@@ -18,3 +18,23 @@ describe("development seed data", () => {
     for (const m of SEED_MERCHANTS) expect(parseAllowedDomains(m.allowedDomains.join("\n"))).toEqual({ domains: m.allowedDomains, errors: [] });
   });
 });
+
+import { generateSeedProducts } from "../../scripts/dev-seed-data";
+
+describe("sample products", () => {
+  const products = generateSeedProducts();
+  const categorySlugs = new Set(walk(SEED_CATEGORIES).map((x) => x.node.slug));
+  it("makes 60 products with unique slugs and SKUs, valid references and some drafts", () => {
+    expect(products).toHaveLength(60);
+    expect(new Set(products.map((p) => p.slug)).size).toBe(60);
+    const skus = products.flatMap((p) => p.variants.map((v) => v.sku));
+    expect(new Set(skus).size).toBe(skus.length);
+    for (const p of products) {
+      expect(SLUG_PATTERN.test(p.slug), p.slug).toBe(true);
+      expect(categorySlugs.has(p.categorySlug), p.categorySlug).toBe(true);
+      expect(SEED_BRANDS.some((b) => b.slug === p.brandSlug)).toBe(true);
+      expect(p.variants.length).toBeGreaterThan(0);
+    }
+    expect(products.filter((p) => p.status === "DRAFT").length).toBe(6);
+  });
+});

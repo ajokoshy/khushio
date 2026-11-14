@@ -25,6 +25,12 @@ describe("admin navigation", () => {
     }
   });
 
+  it("shows Products to anyone who can read products, and Media only to those who can manage it", () => {
+    expect(labels(ROLE_PERMISSIONS[ROLES.analyst])).toContain("Products");
+    expect(labels(ROLE_PERMISSIONS[ROLES.analyst])).not.toContain("Media");
+    expect(labels(ROLE_PERMISSIONS[ROLES.catalogManager])).toEqual(expect.arrayContaining(["Products", "Media"]));
+  });
+
   it("shows nothing without permissions", () => {
     expect(visibleAdminNav([])).toEqual([]);
     expect(visibleAdminNav(undefined)).toEqual([]);

@@ -17,6 +17,8 @@ fails if the result differs from the Drizzle schema, so the two cannot drift apa
 | 2 | `set-admin.sql` | Creates the admin user, or changes the admin's password, name or email | After firstload, and whenever you need to change the admin |
 | 3 | `khushio-sql-phase-2c.sql` | Release 2C: `login_attempts` table for login rate limiting | Once, before deploying 2C |
 | 4 | `khushio-sql-phase-3a.sql` | Release 3A: `brands.is_active`, unique category name per parent | Once, before deploying 3A |
+| 5 | `khushio-sql-phase-3b.sql` | Release 3B: unique media hash, SKU uniqueness, one primary category per product, `product_variants.sort_order`, image indexes | Once, before deploying 3B |
+| 6 | `khushio-sql-phase-3c.sql` | Release 3C: `pg_trgm`, `products.search_vector` and the search, listing, price and store indexes | Once, before deploying 3C |
 | later | `khushio-sql-phase-<release>.sql` | The database changes of one release, for example `khushio-sql-phase-3a.sql` | Once per release, in release order, **before** deploying that release's code |
 
 `firstload` is never edited again after Release 2B. Each later release adds its **own** file (even a
@@ -31,7 +33,7 @@ always shows which releases your database has seen).
 4. Production only: first create a Neon branch from production named `backup-<release>-<date>`.
 
 A new empty database needs `khushio-sql-firstload.sql`, then `set-admin.sql`, then every
-`khushio-sql-phase-*.sql` in name order (today: `phase-2c`, then `phase-3a`).
+`khushio-sql-phase-*.sql` in name order (today: `phase-2c`, `phase-3a`, `phase-3b`, then `phase-3c`).
 
 ## Rules for writing a release script (for Claude and for you)
 

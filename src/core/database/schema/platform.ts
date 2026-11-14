@@ -1,4 +1,5 @@
-import { pgTable, text, boolean, jsonb, integer, timestamp, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { pgTable, text, boolean, jsonb, integer, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { id, createdAt, updatedAt } from "./_shared";
 
 export const siteSettings = pgTable("site_settings", {
@@ -43,4 +44,8 @@ export const mediaAssets = pgTable("media_assets", {
   bytes: integer("bytes"),
   alt: text("alt"),
   createdAt: createdAt(),
-}, (t) => [index("media_hash_idx").on(t.contentHash)]);
+}, (t) => [
+  index("media_hash_idx").on(t.contentHash),
+  /** Release 3B: the same picture is stored once. content_hash is Cloudinary's etag of the file. */
+  uniqueIndex("media_hash_uq").on(t.contentHash).where(sql`${t.contentHash} is not null`),
+]);

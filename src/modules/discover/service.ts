@@ -5,8 +5,8 @@ import { ConflictError, NotFoundError, ValidationError } from "@/core/errors";
 import { resolveCreateSlug, resolveUpdateSlug } from "@/core/validation/slug-rules";
 import { uniqueViolationOf } from "@/core/validation/slug";
 import * as repo from "./repository";
-import { descendantIds, flattenTree, indentedLabel, wouldCreateCycle } from "./tree";
-import type { BrandRow, CategoryListItem, CategoryRow, CategoryUsage, ParentOption, StatusFilter } from "./types";
+import { ancestorsOf, descendantIds, flattenTree, indentedLabel, wouldCreateCycle } from "./tree";
+import type { BrandOption, BrandRow, CategoryListItem, CategoryRow, CategoryUsage, ParentOption, PublicCategory, StatusFilter } from "./types";
 import type { BrandInput, CategoryInput } from "./validation";
 
 /**
@@ -268,4 +268,85 @@ export async function deleteBrand(id: string, actorId: string): Promise<void> {
   await repo.deleteBrandRow(id);
   await logAuditBestEffort({ actor: actorId, action: "brand.deleted", entityType: "brand", entityId: id, metadata: { slug: current.slug, name: current.name } });
   revalidateTag(CACHE_TAGS.brands);
+}
+
+/* ------------------- reads for products and public pages (3B, 3C) ------------------- */
+
+/** Categories by id, from the cached tree. Used by the products module to check the categories a product is saved with. */
+export async function findCategoriesByIds(ids: readonly string[]): Promise<CategoryRow[]> {
+  const wanted = new Set(ids);
+  return (await loadCategories()).filter((c) => wanted.has(c.id));
+}
+
+/** The product form's category pickers: active categories in tree order, indented, plus any given ids even if archived. */
+export async function listCategoryChoices(keepIds: readonly string[] = []): Promise<ParentOption[]> {
+  const keep = new Set(keepIds);
+  return flattenTree(await loadCategories())
+    .filter((c) => c.isActive || keep.has(c.id))
+    .map((c) => ({ id: c.id, label: indentedLabel(c.name, c.depth) + (c.isActive ? "" : " (archived)") }));
+}
+
+/** Active categories without a parent, each with its active children: the "browse by category" tiles. */
+export async function listTopCategories(): Promise<(CategoryRow & { children: CategoryRow[] })[]> {
+  const active = (await loadCategories()).filter((c) => c.isActive);
+  const ids = new Set(active.map((c) => c.id));
+  const flat = flattenTree(active);
+  return flat
+    .filter((c) => c.depth === 0)
+    .map((top) => ({ ...top, children: flat.filter((c) => c.parentId === top.id && ids.has(top.id)) }));
+}
+
+/**
+ * A category page's data, or null when there is no such ACTIVE category. A category below an archived one is hidden too,
+ * because its parent page is gone. Reads the cached tree, so a visitor never costs a database query here.
+ */
+export async function getPublicCategory(slug: string): Promise<PublicCategory | null> {
+  const all = await loadCategories();
+  const category = all.find((c) => c.slug === slug);
+  if (!category?.isActive) return null;
+  const ancestors = ancestorsOf(all, category.id);
+  if (ancestors.some((a) => !a.isActive)) return null;
+  const active = all.filter((c) => c.isActive);
+  const children = flattenTree(active).filter((c) => c.parentId === category.id);
+  return { category, ancestors, children, scopeIds: [category.id, ...descendantIds(active, category.id)] };
+}
+
+const loadBrandOptions = unstable_cache(() => repo.selectActiveBrandOptions(), ["brands-active-options"], {
+  revalidate: CACHE_TTL.brands,
+  tags: [CACHE_TAGS.brands],
+});
+
+/** Active brands for the product form and the shop filters. Cached 24 hours, tag `brands`. */
+export async function listBrandOptions(): Promise<BrandOption[]> {
+  return loadBrandOptions();
+}
+
+const loadBrandBySlug = unstable_cache((slug: string) => repo.selectActiveBrandBySlug(slug), ["brand-by-slug"], {
+  revalidate: CACHE_TTL.brands,
+  tags: [CACHE_TAGS.brands],
+});
+
+/** A brand's public page data, or null when the brand does not exist or is archived. */
+export async function getPublicBrand(slug: string): Promise<BrandRow | null> {
+  return loadBrandBySlug(slug);
+}
+
+/** One brand by id (not cached: the products module checks it right before a save). */
+export async function findBrandById(id: string): Promise<BrandRow | null> {
+  return repo.selectBrandById(id);
+}
+
+/** Active categories in tree order with their slug and an indented label: the category filter on the shop pages. */
+export async function listPublicCategoryOptions(): Promise<{ slug: string; label: string }[]> {
+  const active = (await loadCategories()).filter((c) => c.isActive);
+  return flattenTree(active).map((c) => ({ slug: c.slug, label: indentedLabel(c.name, c.depth) }));
+}
+
+/** The path from the top-level category down to this one (for breadcrumbs), or [] when it is missing or archived. */
+export async function getCategoryTrail(id: string): Promise<CategoryRow[]> {
+  const all = await loadCategories();
+  const category = all.find((c) => c.id === id);
+  if (!category?.isActive) return [];
+  const trail = [...ancestorsOf(all, id), category];
+  return trail.every((c) => c.isActive) ? trail : [];
 }

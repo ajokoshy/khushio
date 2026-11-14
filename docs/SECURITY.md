@@ -2,7 +2,7 @@
 
 Living document. Each release adds what it introduces; Release 7B walks the OWASP top ten and records results here.
 
-## In place (Phases 1 to 3A)
+## In place (Phases 1 to 3C)
 - **Transport and headers:** HSTS, `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, restrictive permissions policy (`next.config.ts`). A content security policy arrives in 7B.
 - **No public registration.** There is no sign-up route. The admin is a row in the `users` table, created or changed only with `drizzle/migrations/set-admin.sql`, run by you in the Neon SQL Editor.
 - **Credentials live in the database, not in config.** Email and bcrypt hash are in `users`; nothing admin-related is in Vercel variables or code. `set-admin.sql` is committed with placeholders only.
@@ -13,6 +13,8 @@ Living document. Each release adds what it introduces; Release 7B walks the OWAS
 - **Audit trail:** sign-in (`auth.login_success`) and sign-out (`auth.logout`) are logged; admin writes from Phase 3 on call `logAudit` after every successful change. Viewer: `/admin/audit` (permission `audit:view`).
 - **Login rate limiting (2C):** 5 failures per email or 20 per IP in 15 minutes block sign-in, enforced in the sign-in service. Only keyed HMAC hashes of the email and IP are stored (`login_attempts`). Details in `docs/AUTH.md`.
 - **Merchant allowed domains (3A):** entered as bare hostnames, normalised (scheme, path, port stripped, punycode), and rejected when they carry a username or password, are an IP address or `localhost`, or are a shared suffix such as `co.in` or `vercel.app` (`src/modules/merchants/domains.ts`). Every change records the domains added and removed in the audit log. Release 4A's /go redirect enforces them.
+- **Uploads (3B):** the Cloudinary API secret never leaves the server. The browser gets a short-lived signature locked to the `khushio/products` folder and the allowed formats. The server then verifies Cloudinary's response signature, so a made-up `public_id` is refused, and checks folder, format, size and dimensions; a stray file is deleted from Cloudinary again. Add the size limit in Cloudinary too (see `docs/IMAGES.md`).
+- **Public catalogue (3C):** every public query goes through the visibility rule; search text is passed to Postgres as a parameter and parsed with `websearch_to_tsquery` (never as query syntax); cursors are validated field by field; address parameters that do not parse are ignored. Affiliate links on product pages carry `rel="sponsored nofollow noopener"`.
 - **Admin writes (3A):** categories, brands and merchants follow the write rules below; a missing permission returns "no permission" and writes nothing; errors shown to the admin never include database details. Logo and website addresses must be http(s) without embedded credentials.
 - **Indexing:** admin and login pages are `noindex` and disallowed in `robots.txt`.
 - **Secrets:** server-only; none have a `NEXT_PUBLIC_` prefix. See `docs/ENVIRONMENT.md`.

@@ -1,6 +1,6 @@
-import { revalidateTag } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { logAuditBestEffort } from "@/core/audit";
-import { CACHE_TAGS } from "@/core/config/cache";
+import { CACHE_TAGS, CACHE_TTL } from "@/core/config/cache";
 import { ConflictError, NotFoundError, ValidationError } from "@/core/errors";
 import { uniqueViolationOf } from "@/core/validation/slug";
 import { resolveCreateSlug, resolveUpdateSlug } from "@/core/validation/slug-rules";
@@ -121,4 +121,14 @@ export async function deleteMerchant(id: string, actorId: string): Promise<void>
   await repo.deleteMerchantRow(id);
   await logAuditBestEffort({ actor: actorId, action: "merchant.deleted", entityType: "merchant", entityId: id, metadata: { slug: current.slug, name: current.name } });
   revalidateTag(CACHE_TAGS.merchants);
+}
+
+const loadMerchantBySlug = unstable_cache((slug: string) => repo.selectActiveMerchantBySlug(slug), ["merchant-by-slug"], {
+  revalidate: CACHE_TTL.merchants,
+  tags: [CACHE_TAGS.merchants],
+});
+
+/** A store page's data, or null when the merchant does not exist or is archived. Cached 24 hours, tag `merchants`. */
+export async function getPublicMerchant(slug: string): Promise<MerchantRow | null> {
+  return loadMerchantBySlug(slug);
 }

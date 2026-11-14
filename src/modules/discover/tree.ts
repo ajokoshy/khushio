@@ -78,3 +78,19 @@ export function wouldCreateCycle(rows: readonly TreeNodeBase[], id: string, newP
 export function indentedLabel(name: string, depth: number): string {
   return depth > 0 ? `${"— ".repeat(depth)}${name}` : name;
 }
+
+/** The chain from the top-level category down to the parent of `id` (empty for a top-level category). Stops on a cycle. */
+export function ancestorsOf<T extends TreeNodeBase>(rows: readonly T[], id: string): T[] {
+  const byId = new Map(rows.map((r) => [r.id, r] as const));
+  const chain: T[] = [];
+  const seen = new Set<string>([id]);
+  let current = byId.get(id)?.parentId ?? null;
+  while (current !== null && !seen.has(current)) {
+    seen.add(current);
+    const node = byId.get(current);
+    if (!node) break;
+    chain.unshift(node);
+    current = node.parentId;
+  }
+  return chain;
+}

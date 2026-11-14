@@ -81,3 +81,8 @@ export async function countProgramsForMerchant(id: string): Promise<number> {
   const [row] = await db().select({ n: count() }).from(merchantPrograms).where(eq(merchantPrograms.merchantId, id));
   return Number(row?.n ?? 0);
 }
+
+export async function selectActiveMerchantBySlug(slug: string): Promise<MerchantRow | null> {
+  const [row] = await db().select(columns).from(merchants).where(and(eq(merchants.slug, slug), eq(merchants.isActive, true))).limit(1);
+  return row ?? null;
+}

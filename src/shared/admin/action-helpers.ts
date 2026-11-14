@@ -68,3 +68,16 @@ export async function runAction(work: () => Promise<ActionResult>): Promise<Acti
     return { ok: false, error: d.message };
   }
 }
+
+/** For actions that hand data back to the browser (for example an upload signature). Failures become a message, never a thrown error. */
+export type DataResult<T> = { ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string> };
+
+export async function runDataAction<T>(work: () => Promise<T>): Promise<DataResult<T>> {
+  try {
+    return { ok: true, data: await work() };
+  } catch (error) {
+    const d = describeError(error);
+    const fieldMessage = d.fields ? Object.values(d.fields)[0] : undefined;
+    return { ok: false, error: fieldMessage ?? d.message, ...(d.fields ? { fieldErrors: d.fields } : {}) };
+  }
+}

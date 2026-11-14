@@ -42,3 +42,15 @@ export type BrandWrite = {
   logoUrl: string | null;
   isFeatured: boolean;
 };
+
+/** A brand as a picker option or public page needs it. */
+export type BrandOption = { id: string; slug: string; name: string };
+
+/** A category for a public page: the category, the path above it, its active subcategories, and the ids a listing covers. */
+export type PublicCategory = {
+  category: CategoryRow;
+  ancestors: CategoryRow[];
+  children: CategoryRow[];
+  /** The category itself and every active subcategory below it. Products in any of them belong on this page. */
+  scopeIds: string[];
+};
