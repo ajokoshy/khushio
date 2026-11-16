@@ -13,7 +13,7 @@ Validated in `src/core/config/env.ts` (Zod). Empty values count as unset. Never 
 | E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD | local, CI | no | Playwright admin (`e2e-admin@example.test`), created on the Neon **test** branch with `set-admin.sql`. Enables signed-in browser tests |
 | E2E_BASE_URL | local, CI | no | Run Playwright against an existing URL (for example a preview) instead of starting a server |
 | CLOUDINARY_CLOUD_NAME, _API_KEY, _API_SECRET | Vercel | from Release 3B | Needed for image uploads and for showing images. Without them uploads are switched off (the product screen says so) and pages show a placeholder. Secret is server-only |
-| CRON_SECRET | Vercel | from Phase 4B | Protects the daily roll-up route |
+| CRON_SECRET | Vercel (Preview and Production) | from Release 4B | 16+ characters (`openssl rand -base64 32`). Vercel Cron sends it as `Authorization: Bearer <value>` to `/api/cron/affiliate-rollup`. Without it the route answers 401 to everyone and nothing is rolled up or purged |
 
 Rule: nothing secret has a `NEXT_PUBLIC_` prefix.
 

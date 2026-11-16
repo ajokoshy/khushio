@@ -31,7 +31,9 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 | products | admin products: variants, categories, attributes, tags, images, status rules (`repository`, `service`, `validation`, `form`, `rules`, `types`) | 3B |
 | media | media library: one row per Cloudinary file, de-duplicated by hash, alt text, unused report | 3B |
 | catalog | public reads only: visible products, search, filters, cursor pages, product page, collections (`repository`, `service`, `cursor`, `filters`, `seo`) | 3C |
-| affiliate | folder only | 4A |
+| affiliate | networks, merchant programmes, affiliate links, the /go decision, link verification (`destination`, `bots`, `go`, `click-repository`, `repository`, `service`, `verify`, `validation`, `types`) | 4A |
+| reports | nightly roll-up and purge, retention setting, click and conversion reports, IST day helpers, cron authorisation (`rollup`, `rollup-repository`, `report-repository`, `report-service`, `days`, `settings`, `cron-auth`) | 4B |
+| conversions | conversion list, manual entry, CSV import with reconcile-on-(network, order id) (`csv`, `rows`, `repository`, `service`, `validation`, `types`) | 4B |
 | deals | folder only | 5A |
 | content | folder only | 6A |
 | seo | folder only | 7A |
@@ -42,6 +44,21 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 - **Archive instead of delete.** Categories with subcategories or products, brands with products, merchants with affiliate links or programmes cannot be deleted. A category with active subcategories cannot be archived; a category cannot be moved under itself or its own descendants.
 - **Usage counts** (products per category or brand, links per merchant) are read by the discover and merchants repositories straight from the shared tables, because the products and affiliate modules do not exist yet. When they do, route these counts through their `service.ts`.
 - **Caching:** the category list and the parent picker read from a 24 hour cache (tag `categories`); every write revalidates exactly the tag it touched (`categories`, `brands`, `merchants`).
+
+## Release 4A rules worth knowing
+- **/go is one read and one insert.** `findGoLink` reads the link by its unique slug joined to its merchant; the click insert runs in `after()`, so the visitor never waits for it. A failed insert is logged and never breaks the redirect. The route ignores the request's query string completely.
+- **The destination is checked on every click**, not only when the link is saved (`destination.ts`): https only, no username, password or port, a real domain (no IP in any spelling), and the host must equal an allowed domain of the merchant or be a subdomain of it, compared label by label (so `amazon.in.evil.com` and `evilamazon.in` fail). Spaces, tabs, line breaks and backslashes anywhere in the address are refused because the URL parser would silently drop them. A refused destination answers 404 and logs the slug and reason.
+- **404 for everything that is not servable:** unknown or badly formed slug (no database read), inactive link, archived merchant, refused destination. Responses are `no-store` and `noindex`.
+- **Tracking parameters** are stored as one line (`tag=khushio-21&ascsubtag={subid}`). `{subid}` is replaced by the link's slug. A parameter the destination already has is replaced, never duplicated. The click stores the sub-ID only when the parameters used `{subid}`.
+- **Bots** are redirected but stored with `is_bot = true` (conservative user-agent list; no user agent at all counts as a bot). HEAD requests are answered like GET but not counted. Only the referrer's host and a two-letter country code are stored; no IP address, no user agent, no full referrer.
+- **Link verification** sends one HEAD request to the destination (without tracking parameters) after the same safety check, does not follow redirects, times out after 6 seconds. Only an answer below 400 sets `last_verified_at`; stores that block automatic checks are reported as "unclear".
+- **Delete rules:** a network with programmes or conversions, and a link with clicks, daily totals or conversions, cannot be deleted (untick Active instead).
+
+## Release 4B rules worth knowing
+- **Nightly job** (`/api/cron/affiliate-rollup`, 02:00 India time, `vercel.json`): counts human clicks per link and India day into `affiliate_click_daily`, then deletes raw clicks older than the retention setting (default 30 days, 7 to 365, changed on `/admin/reports`). The count uses `GREATEST`, so running the job twice, or after part of a day was purged, never changes or lowers a total. Every run re-counts the last 7 complete days and every day it is about to purge, so a missed night heals itself and a click is never deleted before it was counted. Bots are never rolled up.
+- **Days** are India calendar days (`reports/days.ts`). Reports show complete days only; "today so far" comes from raw clicks.
+- **The route** accepts only `Authorization: Bearer <CRON_SECRET>` (constant-time compare). `/admin/reports` has a "Run the nightly job now" button (permission `settings:manage`, fresh) that runs the same code.
+- **Conversions** are one row per (network, external order id). Importing a CSV inserts new orders, updates status or commission of existing ones in place, leaves identical rows alone, and skips bad lines with their line numbers. Re-importing a file changes nothing. Dates without a time zone are India time; `01/11/2026` is read day first.
 
 ## Adding an admin screen (checklist)
 1. Page under `src/app/admin/<name>/page.tsx` that starts with `requirePagePermission(...)`.

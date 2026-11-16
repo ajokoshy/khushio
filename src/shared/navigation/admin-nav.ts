@@ -1,6 +1,6 @@
 import { hasPermission, PERMISSIONS as P, type PermissionKey } from "@/core/permissions";
 
-export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media";
+export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media" | "links" | "networks" | "programs" | "reports" | "conversions";
 
 export type AdminNavItem = {
   label: string;
@@ -21,6 +21,11 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: "Categories", href: "/admin/categories", icon: "categories", permission: P.categoryWrite },
   { label: "Brands", href: "/admin/brands", icon: "brands", permission: P.brandWrite },
   { label: "Merchants", href: "/admin/merchants", icon: "merchants", permission: P.merchantWrite },
+  { label: "Affiliate links", href: "/admin/links", icon: "links", permission: P.affiliateRead },
+  { label: "Networks", href: "/admin/networks", icon: "networks", permission: P.affiliateRead },
+  { label: "Programmes", href: "/admin/programs", icon: "programs", permission: P.affiliateRead },
+  { label: "Reports", href: "/admin/reports", icon: "reports", permission: P.reportView },
+  { label: "Conversions", href: "/admin/conversions", icon: "conversions", permission: P.reportView },
   { label: "Audit log", href: "/admin/audit", icon: "audit", permission: P.auditView },
 ];
 

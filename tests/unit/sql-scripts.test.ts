@@ -218,3 +218,38 @@ describe("khushio-sql-phase-3a.sql (categories, brands, merchants)", () => {
     await db.exec("DELETE FROM categories");
   });
 });
+
+describe("khushio-sql-phase-4a.sql (affiliate links and /go: no schema change)", () => {
+  it("changes nothing: it only reads, and its status query runs and shows what /go relies on", async () => {
+    const sql = read("khushio-sql-phase-4a.sql");
+    expect(sql).not.toMatch(/^\s*(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE)\b/im);
+    const results = await db.exec(sql);
+    const row = results.at(-1)?.rows[0] as Record<string, unknown>;
+    expect(Number(row.link_slug_unique)).toBe(1);
+    expect(Number(row.click_indexes_of_2)).toBe(2);
+    expect(Number(row.allowed_domains_column)).toBe(1);
+    expect(row.status).toBe("khushio-sql-phase-4a applied (no schema change)");
+  });
+});
+
+describe("khushio-sql-phase-4b.sql (click roll-up and retention)", () => {
+  const retention = async () => (await db.query<{ value: unknown }>("SELECT value FROM site_settings WHERE key = 'affiliate.click_retention_days'")).rows;
+
+  it("adds the conversions date index and seeds the retention setting with 30 days", async () => {
+    const idx = await db.query("SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'conv_converted_at_idx'");
+    expect(idx.rows).toHaveLength(1);
+    expect(await retention()).toEqual([{ value: 30 }]);
+  });
+
+  it("never overwrites a retention value you changed, and never adds a second row", async () => {
+    await db.exec("UPDATE site_settings SET value = '14'::jsonb WHERE key = 'affiliate.click_retention_days'");
+    await db.exec(read("khushio-sql-phase-4b.sql"));
+    expect(await retention()).toEqual([{ value: 14 }]);
+    await db.exec("UPDATE site_settings SET value = '30'::jsonb WHERE key = 'affiliate.click_retention_days'");
+  });
+
+  it("ends with a status row", async () => {
+    const results = await db.exec(read("khushio-sql-phase-4b.sql"));
+    expect((results.at(-1)?.rows[0] as { status: string }).status).toBe("khushio-sql-phase-4b applied");
+  });
+});

@@ -10,5 +10,7 @@ Fill in at the end of every release (guide section 7.4). If any figure is above 
 | 3A | | | | | Admin reads of categories are cached 24 h (tag `categories`); lists of brands and merchants are paged (limit + 1 rows, no count queries) |
 | 3B | | | | | Admin only. One Cloudinary upload per image (browser to Cloudinary, no Vercel bandwidth); one extra small read per save for SKU and category checks. Duplicate files are removed from Cloudinary again |
 | 3C | | | | | Visitor pages: category, brand, store, collection and product reads cached 30 min (tag `products`); searches are uncached (2 indexed queries at most). Images use four Cloudinary profiles with srcset, lazy loading except the first two cards and the main product picture |
+| 4A | | | | | /go: one indexed read plus one insert (after the response); no caching possible or wanted. Each click adds one row (about 100 bytes). Admin link screens are paged |
+| 4B | | | | | Nightly job: one read, one upsert over at most about 8 days of clicks, one delete; one invocation per day. Reports read only `affiliate_click_daily` (one row per link per day). Watch raw-click storage in Neon after the first busy week; shorten retention to 14 days if needed |
 
 Targets from 7B: LCP 2.5 s or less, INP 200 ms or less, CLS 0.1 or less.

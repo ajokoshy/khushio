@@ -78,7 +78,11 @@ export const affiliateConversions = pgTable("affiliate_conversions", {
   currency: char("currency", { length: 3 }).notNull().default("INR"),
   status: text("status").notNull().default("pending"),
   convertedAt: timestamp("converted_at", { withTimezone: true }).notNull(),
-}, (t) => [uniqueIndex("conv_external_uq").on(t.networkId, t.externalOrderId)]);
+}, (t) => [
+  uniqueIndex("conv_external_uq").on(t.networkId, t.externalOrderId),
+  /** Release 4B: conversion reports and the conversions list read by date. */
+  index("conv_converted_at_idx").on(t.convertedAt),
+]);
 
 export const affiliateImportLogs = pgTable("affiliate_import_logs", {
   id: id(),

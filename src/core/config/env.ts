@@ -10,6 +10,8 @@ const schema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+  /** Release 4B: the daily roll-up route accepts only requests carrying this secret (Vercel Cron sends it as a Bearer token). */
+  CRON_SECRET: z.string().min(16).optional(),
 });
 
 // Empty strings (e.g. a blank line in .env.local or an unset CI secret) count as "not set".

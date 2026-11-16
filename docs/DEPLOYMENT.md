@@ -49,7 +49,12 @@ Settings, Secrets and variables, Actions. All optional: without them CI still ru
 | E2E_DATABASE_URL | pooled string of the same `test` branch (browser tests) |
 | E2E_ADMIN_PASSWORD | the password of the CI admin `e2e-admin@example.test` |
 
-Create the `test` branch from production, run `khushio-sql-firstload.sql` and every `khushio-sql-phase-*.sql` on it (today `phase-2c`, `phase-3a`, `phase-3b` and `phase-3c`), then run `set-admin.sql` there with `e2e-admin@example.test` and the password you saved as `E2E_ADMIN_PASSWORD`. Never point these secrets at production.
+Create the `test` branch from production, run `khushio-sql-firstload.sql` and every `khushio-sql-phase-*.sql` on it (today `phase-2c`, `phase-3a`, `phase-3b`, `phase-3c`, `phase-4a` and `phase-4b`), then run `set-admin.sql` there with `e2e-admin@example.test` and the password you saved as `E2E_ADMIN_PASSWORD`. Never point these secrets at production.
+
+### Release 4B: the nightly job
+- In Vercel (Preview and Production) add `CRON_SECRET` (16+ characters, for example the output of `openssl rand -base64 32`) and redeploy. Vercel Cron then sends it automatically.
+- After the deploy, Settings, Cron Jobs in Vercel should list `/api/cron/affiliate-rollup` at `30 20 * * *` (02:00 India time). Cron jobs run on Production deployments only; on a preview use the "Run the nightly job now" button on `/admin/reports`.
+- Check by hand: open `/admin/reports` and press the button, or run `curl -i -H "Authorization: Bearer <secret>" https://<your-domain>/api/cron/affiliate-rollup` (expect 200 and a JSON line). Without the header the answer must be 401.
 
 ### First deployment check (Phase 1 sign-off)
 - Create `.env.local` from `.env.example` using the **preview** Neon branch.

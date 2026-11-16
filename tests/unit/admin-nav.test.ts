@@ -31,6 +31,15 @@ describe("admin navigation", () => {
     expect(labels(ROLE_PERMISSIONS[ROLES.catalogManager])).toEqual(expect.arrayContaining(["Products", "Media"]));
   });
 
+  it("shows the affiliate screens by permission (Release 4A and 4B)", () => {
+    const affiliate = ["Affiliate links", "Networks", "Programmes"];
+    const reporting = ["Reports", "Conversions"];
+    expect(labels(ROLE_PERMISSIONS[ROLES.analyst])).toEqual(expect.arrayContaining([...affiliate, ...reporting]));
+    expect(labels(ROLE_PERMISSIONS[ROLES.catalogManager])).toEqual(expect.arrayContaining(affiliate));
+    for (const label of reporting) expect(labels(ROLE_PERMISSIONS[ROLES.catalogManager])).not.toContain(label);
+    for (const label of [...affiliate, ...reporting]) expect(labels(ROLE_PERMISSIONS[ROLES.editor])).not.toContain(label);
+  });
+
   it("shows nothing without permissions", () => {
     expect(visibleAdminNav([])).toEqual([]);
     expect(visibleAdminNav(undefined)).toEqual([]);

@@ -9,6 +9,7 @@ import { toAdminDateTimeInput } from "@/core/validation/datetime";
 import { minorToInput, isCurrencyCode, DEFAULT_CURRENCY } from "@/core/validation/money";
 import { cloudinaryConfigured, imageUrl } from "@/infrastructure/cloudinary";
 import { ALLOWED_FORMATS, MAX_IMAGE_BYTES, MAX_IMAGES_PER_PRODUCT } from "@/infrastructure/cloudinary/upload-rules";
+import { listLinksForProduct } from "@/modules/affiliate/service";
 import { findBrandById, listBrandOptions, listCategoryChoices } from "@/modules/discover/service";
 import { getProduct } from "@/modules/products/service";
 import { ConfirmActionButton } from "@/shared/admin/confirm-action-button";
@@ -47,6 +48,9 @@ export default async function EditProductPage({ params, searchParams }: { params
   if (currentBrand && !brands.some((b) => b.id === currentBrand.id)) brands.unshift({ id: currentBrand.id, label: `${currentBrand.name} (archived)` });
 
   const canPublish = hasPermission(session.user.permissions, P.productPublish);
+  const canSeeLinks = hasPermission(session.user.permissions, P.affiliateRead);
+  const canEditLinks = hasPermission(session.user.permissions, P.affiliateWrite);
+  const links = canSeeLinks ? await listLinksForProduct(id) : [];
   const initial: ProductFormValues = {
     name: product.name,
     slug: product.slug,
@@ -94,6 +98,31 @@ export default async function EditProductPage({ params, searchParams }: { params
         maxMegabytes={MAX_IMAGE_BYTES / 1024 / 1024}
         accept={ALLOWED_FORMATS.map((f) => `.${f}`).join(",")}
       />
+
+      {canSeeLinks && (
+        <section className="mt-10 max-w-3xl border-t border-cream-200 pt-6" aria-labelledby="links-heading">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="links-heading" className="text-xl">Where to buy (affiliate links)</h2>
+            {canEditLinks && <Link href={`/admin/links/new?product=${encodeURIComponent(product.slug)}`} className="rounded-xl border border-forest-800 px-4 py-2 text-sm font-medium hover:bg-forest-100">Add link</Link>}
+          </div>
+          {links.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-600">No links yet. A published product with an active link shows a Buy button on its page.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-cream-200 rounded-card border border-cream-200 bg-cream-50 text-sm">
+              {links.map((l) => (
+                <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                  <span>
+                    <span className="font-medium">{l.merchantName}</span> <code className="text-xs">/go/{l.slug}</code>
+                    {!l.isActive && <span className="ml-2 rounded-full bg-coral-100 px-2 py-0.5 text-xs text-coral-600">Inactive</span>}
+                    {l.problem && <span className="ml-2 rounded-full bg-coral-100 px-2 py-0.5 text-xs text-coral-600" title={l.problem}>Blocked</span>}
+                  </span>
+                  {canEditLinks && <Link href={`/admin/links/${l.id}`} className="underline">Edit</Link>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className="mt-10 max-w-3xl border-t border-cream-200 pt-6" aria-labelledby="danger-heading">
         <h2 id="danger-heading" className="text-xl">Archive or delete</h2>

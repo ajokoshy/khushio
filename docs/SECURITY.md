@@ -2,7 +2,7 @@
 
 Living document. Each release adds what it introduces; Release 7B walks the OWASP top ten and records results here.
 
-## In place (Phases 1 to 3C)
+## In place (Phases 1 to 4B)
 - **Transport and headers:** HSTS, `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, restrictive permissions policy (`next.config.ts`). A content security policy arrives in 7B.
 - **No public registration.** There is no sign-up route. The admin is a row in the `users` table, created or changed only with `drizzle/migrations/set-admin.sql`, run by you in the Neon SQL Editor.
 - **Credentials live in the database, not in config.** Email and bcrypt hash are in `users`; nothing admin-related is in Vercel variables or code. `set-admin.sql` is committed with placeholders only.
@@ -15,6 +15,9 @@ Living document. Each release adds what it introduces; Release 7B walks the OWAS
 - **Merchant allowed domains (3A):** entered as bare hostnames, normalised (scheme, path, port stripped, punycode), and rejected when they carry a username or password, are an IP address or `localhost`, or are a shared suffix such as `co.in` or `vercel.app` (`src/modules/merchants/domains.ts`). Every change records the domains added and removed in the audit log. Release 4A's /go redirect enforces them.
 - **Uploads (3B):** the Cloudinary API secret never leaves the server. The browser gets a short-lived signature locked to the `khushio/products` folder and the allowed formats. The server then verifies Cloudinary's response signature, so a made-up `public_id` is refused, and checks folder, format, size and dimensions; a stray file is deleted from Cloudinary again. Add the size limit in Cloudinary too (see `docs/IMAGES.md`).
 - **Public catalogue (3C):** every public query goes through the visibility rule; search text is passed to Postgres as a parameter and parsed with `websearch_to_tsquery` (never as query syntax); cursors are validated field by field; address parameters that do not parse are ignored. Affiliate links on product pages carry `rel="sponsored nofollow noopener"`.
+- **Affiliate redirect (4A):** `/go/[slug]` never reads its query string and never takes a destination from the request. The stored destination is re-checked on every click against the merchant's allowed domains (https only, no credentials or port, no IP address, label-exact host match, no hidden whitespace or backslashes), so an edit of the merchant's domains or a hand-edited row cannot create an open redirect. Failures answer 404. Clicks store no IP address, user agent or full referrer. Details and tests: `docs/MODULES.md` (4A rules), `tests/unit/affiliate-destination.test.ts`, `tests/integration/affiliate.test.ts`.
+- **Link verification (4A):** the server only requests an address that passed the same check, does not follow redirects and times out after 6 seconds, so it cannot be steered to an internal address.
+- **Nightly job (4B):** `/api/cron/affiliate-rollup` requires `CRON_SECRET` as a Bearer token (constant-time compare); a missing or short secret refuses everyone. The job is idempotent and only deletes raw clicks older than the retention setting, after counting them.
 - **Admin writes (3A):** categories, brands and merchants follow the write rules below; a missing permission returns "no permission" and writes nothing; errors shown to the admin never include database details. Logo and website addresses must be http(s) without embedded credentials.
 - **Indexing:** admin and login pages are `noindex` and disallowed in `robots.txt`.
 - **Secrets:** server-only; none have a `NEXT_PUBLIC_` prefix. See `docs/ENVIRONMENT.md`.

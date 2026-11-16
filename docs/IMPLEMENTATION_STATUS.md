@@ -2,7 +2,7 @@
 
 **Standing instruction for Claude:** every time you deliver a new code zip, deliver the updated project guide (Khushio_Project_Guide_and_Phased_Roadmap.docx) in the same reply: raise the version and the "built up to" line, update section 2 (status and what was verified), the release's own section, sections 7.5 and 8, section 19, and say what was not run. See guide section 5, rule 7.
 
-Last updated at the end of Releases 3B and 3C. **Built up to Release 3C.** Next: Release 4A (affiliate links and the /go redirect).
+Last updated at the end of Releases 4A and 4B. **Built up to Release 4B.** Next: Release 5A (deals and coupons).
 
 ## Phase 1: foundation (done)
 Structure, design tokens, layout shell, env validation, Drizzle schema, health endpoint, robots/sitemap, security headers, Vitest setup.
@@ -54,7 +54,37 @@ Admin shell driven by `ADMIN_NAV`, shared admin components, `core/audit` and `/a
 - Database script: `khushio-sql-phase-3c.sql` (needs `CREATE EXTENSION`, which the Neon SQL Editor allows).
 - Dev starter data now also adds 60 sample products without images (every tenth is a draft, to prove drafts stay hidden).
 
-## Verified in the build environment (Releases 3B and 3C)
+## Release 4A: affiliate links and the /go redirect (done, not yet run against Neon)
+- Admin: `/admin/links` (list with search and status filter, a "Blocked" flag when a destination no longer matches its merchant's domains, create, edit, delete when it has no history, check now, "Check oldest links" for the 10 stalest), `/admin/networks`, `/admin/programs`. The product edit screen lists the product's links with an "Add link" shortcut (`/admin/links/new?product=<slug>`). Nav: Affiliate links, Networks, Programmes (permission `affiliate:read`; writes `affiliate:write`). **No new permission keys, so no re-login is needed.**
+- `/go/[slug]` (Node runtime): one indexed read, 302 with tracking parameters, the click recorded in `after()`; 404 for unknown, inactive, archived-merchant and refused destinations; the query string is ignored. Bots are stored with `is_bot`. HEAD is answered but not counted.
+- Product pages use the shared `AffiliateLink` component (`rel="sponsored nofollow noopener"`).
+- **Decision to confirm: the sub-ID is the link's slug**, sent wherever the tracking parameters contain `{subid}` (for example `ascsubtag={subid}`). It lets a network report be matched to a link for ever, even after the raw click was purged. If you prefer one sub-ID per click, say so before Release 5A.
+- **Decision to confirm: destinations must be https** (the guide did not say; http destinations are refused).
+- Database script: `khushio-sql-phase-4a.sql` (no schema change).
+
+## Release 4B: click roll-up, retention and reports (done, not yet run against Neon)
+- Nightly job `/api/cron/affiliate-rollup` (02:00 India time, `vercel.json`), protected by `CRON_SECRET`: counts human clicks per link and India day into `affiliate_click_daily` (idempotent, never lowers a total), then deletes raw clicks older than the retention setting (default 30 days, 7 to 365, stored in `site_settings` key `affiliate.click_retention_days`, edited on `/admin/reports`).
+- `/admin/reports` (permission `report:view`): 7, 30 or 90 complete days; clicks by day, top 20 links, by merchant, by product, active links with no clicks, conversion totals; "today so far" from raw clicks. A "Run the nightly job now" button (permission `settings:manage`, fresh) runs the same code.
+- `/admin/conversions` (list, filters, add, edit, delete) and `/admin/conversions/import` (CSV, permission `import:run`). Orders are matched on (network, order id): new rows are inserted, changed status or commission is updated, identical rows are left alone, bad lines are skipped with line numbers, the sub-ID column attributes an order to a link. Limits: 1 MB, 5,000 rows.
+- Database script: `khushio-sql-phase-4b.sql` (index `conv_converted_at_idx`, retention row). **New environment variable: `CRON_SECRET`.**
+
+## Verified in the build environment (Releases 4A and 4B)
+This time the environment had the npm registry. **Run and passing:** `npm ci`, `npm run typecheck`, `npm run lint`, the whole Vitest suite (426 passed, 1 skipped = the Neon smoke test that needs `TEST_DATABASE_URL`; it was 271 before 4A), and `next build` in a copy with the two Google Fonts stubbed (the environment cannot reach fonts.googleapis.com; the real fonts are fetched on Vercel). The 3B and 3C code also passes all of this, including the SQL scripts and integration tests on an embedded Postgres (PGlite).
+**NOT run:** anything against the real Neon database or Vercel (the `db.execute` result shape of the Neon HTTP driver is the one place PGlite cannot prove: the roll-up and purge read `result.rows`), the Playwright specs (`tests/e2e/affiliate.spec.ts` is new and unrun), Cloudinary, and Vercel Cron itself.
+
+## Smoke checklist for 4A and 4B (preview, then production)
+- Run `khushio-sql-phase-4a.sql` then `khushio-sql-phase-4b.sql` on the branch; read each status row (4A: slug_unique 1, indexes 2, allowed_domains 1; 4B: index 1, retention 30).
+- Vercel: add `CRON_SECRET` (Preview and Production), redeploy.
+- Merchants: open Amazon India and check its allowed domains. Networks: add Cuelinks. Programmes: add Amazon India on Cuelinks.
+- Links: create a link for a published product with destination `https://www.amazon.in/dp/...` and tracking `tag=<yourtag>&ascsubtag={subid}`. Try a destination on another domain: refused with a message.
+- Open the product page signed out: the Buy button appears; click it: you land on the store with your tag and the sub-ID in the address. `/go/<slug>?url=https://example.com` must still go to the store. Archive the link: the button disappears and `/go/<slug>` is 404.
+- "Check now" on the link (a store that blocks it shows "unclear", which is normal).
+- `/admin/reports`: press "Run the nightly job now"; the day's click appears after the first complete day; "Clicks today so far" shows today's clicks at once.
+- `curl -i https://<site>/api/cron/affiliate-rollup` answers 401; with `-H "Authorization: Bearer <secret>"` answers 200.
+- Conversions: add one by hand; import a small CSV (`order_id,status,commission,date,sub_id`) twice: the second time shows everything as unchanged.
+- Vercel, Settings, Cron Jobs lists the job. Check Neon storage after the first week.
+
+## Verified in the build environment (Releases 3B and 3C, earlier)
 **Only partly.** The build environment had no network, so `npm install` was impossible and **typecheck, lint, the Vitest suite and `next build` were NOT run on this code**. What was run: every new and changed file was parsed (no syntax errors), every relative and `@/` import and every named import was checked to exist, and the pure logic (money, dates, signing, upload rules, image URLs, cursors) was executed and gave the expected results. The SQL files and everything that needs Postgres (the integration test, the SQL-script tests, search ranking, index use) have **not** been executed.
 Run first on your machine: `npm install`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. Expect to fix a small number of type or lint messages; paste them back and they will be fixed.
 
@@ -78,9 +108,9 @@ Run first on your machine: `npm install`, `npm run typecheck`, `npm run lint`, `
 ## Carry-over items (not done yet)
 1. Branch protection on `main` requiring the two CI checks (needs the first green CI run).
 2. Cost numbers for 2A to 3A in `docs/PERFORMANCE.md`.
-3. Add the `TEST_DATABASE_URL`, `E2E_DATABASE_URL`, `E2E_ADMIN_PASSWORD` secrets, run `phase-2c`, `phase-3a`, `phase-3b` and `phase-3c` on the Neon `test` branch.
+3. Add the `TEST_DATABASE_URL`, `E2E_DATABASE_URL`, `E2E_ADMIN_PASSWORD` secrets, run `phase-2c` to `phase-4b` on the Neon `test` branch.
 
 ## Next three tasks
-1. Run the install, typecheck, lint, tests and build, fix what they report, run the smoke checklists, tag `phase-3b` and `phase-3c`.
-2. Release 4A: affiliate links, the /go redirect, and the admin to create links (product pages already show them).
-3. Release 4B: click reports.
+1. Run the smoke checklists for 3B, 3C, 4A and 4B on a preview branch, then production; tag `phase-3b`, `phase-3c`, `phase-4a`, `phase-4b`.
+2. Release 5A: deals and coupons.
+3. Release 5B: CSV import and export.

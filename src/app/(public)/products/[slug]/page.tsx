@@ -6,6 +6,7 @@ import { formatMinor } from "@/core/validation/money";
 import { imageUrl } from "@/infrastructure/cloudinary";
 import { getCategoryTrail } from "@/modules/discover/service";
 import { getProductPage, getRelatedProducts, listTopProductSlugs } from "@/modules/catalog/service";
+import { AffiliateLink } from "@/shared/catalog/affiliate-link";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { ProductGrid } from "@/shared/catalog/product-card";
 import { ProductImage } from "@/shared/catalog/product-image";
@@ -89,8 +90,7 @@ export default async function ProductPage({ params }: Props) {
               <ul className="mt-2 flex flex-wrap gap-3">
                 {product.links.map((link) => (
                   <li key={link.slug}>
-                    {/* Affiliate link: sponsored and not followed by search engines. The redirect itself arrives in Release 4A. */}
-                    <a href={`/go/${link.slug}`} rel="sponsored nofollow noopener" target="_blank" className="inline-block rounded-xl bg-forest-800 px-5 py-2.5 text-sm font-medium text-cream-50 hover:bg-forest-700">Buy at {link.merchantName}</a>
+                    <AffiliateLink slug={link.slug}>Buy at {link.merchantName}</AffiliateLink>
                   </li>
                 ))}
               </ul>
