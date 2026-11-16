@@ -48,19 +48,37 @@ jobs:
       E2E_ADMIN_EMAIL: e2e-admin@example.test
       E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
     steps:
+      # Optional gate: without the E2E_DATABASE_URL secret (forks, Dependabot, a fresh repo) the smoke tests are
+      # skipped with a warning instead of failing on a 503 from /go. Add the secret to run them.
+      - name: Check e2e database secret
+        id: gate
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Playwright smoke skipped::E2E_DATABASE_URL secret is missing or empty, so the e2e tests did not run. Add it under Settings > Secrets and variables > Actions (and under Dependabot secrets for Dependabot PRs)."
+          fi
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.enabled == 'true'
       - uses: actions/setup-node@v4
+        if: steps.gate.outputs.enabled == 'true'
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+        if: steps.gate.outputs.enabled == 'true'
       - name: Generate a throwaway AUTH_SECRET
         run: echo "AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+        if: steps.gate.outputs.enabled == 'true'
       - run: npx playwright install --with-deps chromium
+        if: steps.gate.outputs.enabled == 'true'
       - run: npm run build
+        if: steps.gate.outputs.enabled == 'true'
       - run: npx playwright test
+        if: steps.gate.outputs.enabled == 'true'
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.gate.outputs.enabled == 'true' }}
         with:
           name: playwright-report
           path: |
