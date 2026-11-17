@@ -98,3 +98,19 @@ export async function selectConversionTotals(from: Date, to: Date): Promise<Conv
     .orderBy(asc(affiliateConversions.currency), asc(affiliateConversions.status));
   return rows.map((r) => ({ status: r.status, currency: r.currency.trim(), orders: Number(r.orders), commissionMinor: Number(r.commissionMinor) }));
 }
+
+export type ClickExportRow = { day: string; slug: string; merchantSlug: string; productSlug: string | null; clicks: number };
+
+/** Human clicks per link per day in the range (the long-term table), for the CSV export. Capped by the caller's limit. */
+export async function selectClicksForExport(from: string, to: string, limit: number): Promise<ClickExportRow[]> {
+  const rows = await db()
+    .select({ day: affiliateClickDaily.day, slug: affiliateLinks.slug, merchantSlug: merchants.slug, productSlug: products.slug, clicks: affiliateClickDaily.clicks })
+    .from(affiliateClickDaily)
+    .innerJoin(affiliateLinks, eq(affiliateLinks.id, affiliateClickDaily.linkId))
+    .innerJoin(merchants, eq(merchants.id, affiliateLinks.merchantId))
+    .leftJoin(products, eq(products.id, affiliateLinks.productId))
+    .where(inRange(from, to))
+    .orderBy(asc(affiliateClickDaily.day), asc(affiliateLinks.slug))
+    .limit(limit);
+  return rows.map((r) => ({ ...r, clicks: Number(r.clicks) }));
+}

@@ -5,6 +5,7 @@ import { ConflictError, NotFoundError, ValidationError } from "@/core/errors";
 import { resolveCreateSlug, resolveUpdateSlug } from "@/core/validation/slug-rules";
 import { uniqueViolationOf } from "@/core/validation/slug";
 import * as repo from "./repository";
+import * as importRepo from "./import-repository";
 import { ancestorsOf, descendantIds, flattenTree, indentedLabel, wouldCreateCycle } from "./tree";
 import type { BrandOption, BrandRow, CategoryListItem, CategoryRow, CategoryUsage, ParentOption, PublicCategory, StatusFilter } from "./types";
 import type { BrandInput, CategoryInput } from "./validation";
@@ -349,4 +350,20 @@ export async function getCategoryTrail(id: string): Promise<CategoryRow[]> {
   if (!category?.isActive) return [];
   const trail = [...ancestorsOf(all, id), category];
   return trail.every((c) => c.isActive) ? trail : [];
+}
+
+/** Category slug -> id for the slugs that exist (archived ones included). Used by deals and CSV imports. */
+export async function findCategoryIdsBySlugs(slugs: readonly string[]): Promise<Map<string, string>> {
+  const wanted = new Set(slugs);
+  return new Map((await loadCategories()).filter((c) => wanted.has(c.slug)).map((c) => [c.slug, c.id] as const));
+}
+
+/** Brand slug -> brand for the slugs that exist, archived or not (CSV imports). */
+export async function findBrandsBySlugs(slugs: readonly string[]): Promise<Map<string, BrandRow>> {
+  return new Map((await repo.selectBrandsBySlugs(slugs)).map((b) => [b.slug, b] as const));
+}
+
+/** Brands whose name matches one of the given names, ignoring case (CSV imports check the unique name). */
+export async function findBrandsByNames(names: readonly string[]): Promise<BrandRow[]> {
+  return importRepo.selectBrandsByNames(names);
 }

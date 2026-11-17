@@ -5,7 +5,8 @@ export const CACHE_TTL = {
   merchants: 60 * 60 * 24,
   products: 60 * 30,
   homepage: 60 * 10,
-  deals: 60 * 10,
+  /** Also the /deals page's revalidate (src/app/(public)/deals/page.tsx). Keep it below START_LOOKAHEAD_MS in modules/deals/window.ts. */
+  deals: 60 * 5,
   siteSettings: 60 * 30,
   dashboard: 60,
 } as const;

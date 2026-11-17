@@ -78,3 +78,9 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 - **Search** is Postgres full-text (`websearch_to_tsquery`, name weighs more than summary and description), plus brand name and tag matches, plus an exact-name boost. Nothing matched on the first page: it retries with trigram similarity on the name (typos). Searches are not cached; everything else is cached 30 minutes under tag `products`, which every product write clears.
 - **Cursor paging**, no OFFSET and no counts: `limit + 1` rows, the last row gives the cursor (`cursor.ts` validates every field, a bad cursor means the first page).
 - **Filters** are plain query parameters (`q`, `brand`, `category`, `min`, `max`, `sort`, `cursor`). Filtered, searched and paged views are `noindex,follow` with the plain page as canonical.
+
+## deals (Release 5A)
+Offers and coupon codes. `window.ts` is the one rule for "showing now" (pure, tested to the millisecond); `conditions.ts` is its SQL twin used by every public query; `public.ts` caches lists under the tag `deals` and re-filters them with the clock at render time; `service.ts` holds admin rules (store, link and attachments checked, audit, cache tag). Uses other modules only through their services (`affiliate.findLinkRefBySlug`, `products.findProductIdsBySlugs`, `discover.findCategoryIdsBySlugs`, `merchants.findMerchant`).
+
+## imports (Release 5B)
+The CSV import engine and exports. `engine.ts` reads, maps columns, previews and writes in batches of 100 (one all-or-nothing write per batch); `mapping.ts` matches headers to fields. What a row MEANS lives in the module that owns the data: `discover/import.ts` (brands), `products/import.ts` (products and variants), `affiliate/import.ts` (links), `deals/import.ts` (deals), each with its own `import-repository.ts`. Exports use the same columns as the templates. CSV reading and writing are in `src/core/csv`.

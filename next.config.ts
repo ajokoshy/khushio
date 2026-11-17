@@ -12,7 +12,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // Lets server pages answer a real 403 via forbidden() (see src/core/permissions/require.ts).
-  experimental: { authInterrupts: true },
+  // Server actions accept bodies up to 3 MB: the CSV import limit is 2 MB per file (Release 5B).
+  experimental: { authInterrupts: true, serverActions: { bodySizeLimit: "3mb" } },
   images: {
     // Cloudinary serves optimized, transformed images itself (see docs/ARCHITECTURE.md);
     // Vercel image processing is bypassed to save usage.

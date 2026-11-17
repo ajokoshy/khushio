@@ -253,3 +253,65 @@ describe("khushio-sql-phase-4b.sql (click roll-up and retention)", () => {
     expect((results.at(-1)?.rows[0] as { status: string }).status).toBe("khushio-sql-phase-4b applied");
   });
 });
+
+describe("khushio-sql-phase-5a.sql (deals and coupons)", () => {
+  const M = "22222222-2222-4222-8222-222222222222";
+  const D = "33333333-3333-4333-8333-333333333333";
+  const count = async (table: string) => Number((await db.query<{ n: number }>(`SELECT count(*) AS n FROM ${table}`)).rows[0]?.n);
+
+  it("creates exactly the four new tables, and its status row reports them", async () => {
+    const results = await db.exec(read("khushio-sql-phase-5a.sql"));
+    const row = results.at(-1)?.rows[0] as Record<string, unknown>;
+    expect(Number(row.tables_of_4)).toBe(4);
+    expect(Number(row.indexes_of_9)).toBe(9);
+    expect(Number(row.foreign_keys_of_8)).toBe(8);
+    expect(row.status).toBe("khushio-sql-phase-5a applied");
+  });
+
+  it("is safe to run on a database that already has deals", async () => {
+    await db.exec(`INSERT INTO merchants (id, slug, name) VALUES ('${M}', 'deal-store', 'Deal store')`);
+    await db.exec(`INSERT INTO deals (id, slug, title, merchant_id, status) VALUES ('${D}', 'first-deal', 'First deal', '${M}', 'published')`);
+    await db.exec(read("khushio-sql-phase-5a.sql"));
+    expect(await count("deals")).toBe(1);
+  });
+
+  it("gives new rows safe defaults: a draft deal that starts now, an active coupon", async () => {
+    const deal = (await db.query<{ status: string; type: string; is_featured: boolean; sort_order: number; ends_at: unknown }>("SELECT status, type, is_featured, sort_order, ends_at FROM deals WHERE id = $1", [D])).rows[0];
+    expect(deal).toMatchObject({ status: "published", type: "deal", is_featured: false, sort_order: 0, ends_at: null });
+    await db.exec(`INSERT INTO deals (slug, title, merchant_id) VALUES ('default-deal', 'Default', '${M}')`);
+    expect((await db.query<{ status: string }>("SELECT status FROM deals WHERE slug = 'default-deal'")).rows[0]?.status).toBe("draft");
+  });
+
+  it("keeps one code per store, ignoring case, but allows the same code at another store", async () => {
+    await db.exec(`INSERT INTO coupons (merchant_id, code) VALUES ('${M}', 'Save15')`);
+    await expect(db.exec(`INSERT INTO coupons (merchant_id, code) VALUES ('${M}', 'SAVE15')`)).rejects.toThrow(/coupons_merchant_code_uq/);
+    await db.exec("INSERT INTO merchants (id, slug, name) VALUES ('44444444-4444-4444-8444-444444444444', 'other-store', 'Other store')");
+    await db.exec("INSERT INTO coupons (merchant_id, code) VALUES ('44444444-4444-4444-8444-444444444444', 'SAVE15')");
+  });
+
+  it("removes a deal's coupons and attachments with it, but refuses to delete a store that has deals", async () => {
+    await db.exec(`INSERT INTO coupons (deal_id, merchant_id, code) VALUES ('${D}', '${M}', 'INSIDE')`);
+    await expect(db.exec(`DELETE FROM merchants WHERE id = '${M}'`)).rejects.toThrow();
+    await db.exec(`DELETE FROM deals WHERE id = '${D}'`);
+    expect((await db.query("SELECT 1 FROM coupons WHERE code = 'INSIDE'")).rows).toHaveLength(0);
+    expect((await db.query("SELECT 1 FROM coupons WHERE code = 'Save15'")).rows).toHaveLength(1); // stand-alone coupons stay
+  });
+});
+
+describe("khushio-sql-phase-5b.sql (CSV import and export)", () => {
+  it("adds a nullable entity column to the import log, without a default, and an index on started_at", async () => {
+    const col = (await db.query<{ is_nullable: string; column_default: string | null }>("SELECT is_nullable, column_default FROM information_schema.columns WHERE table_name = 'affiliate_import_logs' AND column_name = 'entity'")).rows[0];
+    expect(col).toEqual({ is_nullable: "YES", column_default: null });
+    expect((await db.query("SELECT 1 FROM pg_indexes WHERE indexname = 'import_logs_started_idx'")).rows).toHaveLength(1);
+  });
+
+  it("keeps rows written before the release (entity stays NULL) and ends with its status row", async () => {
+    await db.exec("INSERT INTO affiliate_import_logs (source, rows_processed, rows_failed) VALUES ('csv:old', 3, 0)");
+    const results = await db.exec(read("khushio-sql-phase-5b.sql"));
+    const row = results.at(-1)?.rows[0] as Record<string, unknown>;
+    expect(Number(row.entity_column)).toBe(1);
+    expect(Number(row.history_index)).toBe(1);
+    expect(row.status).toBe("khushio-sql-phase-5b applied");
+    expect((await db.query<{ entity: string | null }>("SELECT entity FROM affiliate_import_logs WHERE source = 'csv:old'")).rows[0]?.entity).toBeNull();
+  });
+});

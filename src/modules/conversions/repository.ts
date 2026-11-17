@@ -101,5 +101,5 @@ export async function upsertConversions(rows: ConversionWrite[]): Promise<{ inse
 }
 
 export async function insertImportLog(values: { source: string; rowsProcessed: number; rowsFailed: number; startedAt: Date }): Promise<void> {
-  await db().insert(affiliateImportLogs).values({ ...values, finishedAt: new Date() });
+  await db().insert(affiliateImportLogs).values({ ...values, entity: "conversions", finishedAt: new Date() });
 }

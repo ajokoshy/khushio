@@ -1,6 +1,6 @@
 import { hasPermission, PERMISSIONS as P, type PermissionKey } from "@/core/permissions";
 
-export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media" | "links" | "networks" | "programs" | "reports" | "conversions";
+export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media" | "links" | "networks" | "programs" | "reports" | "conversions" | "deals" | "coupons" | "import";
 
 export type AdminNavItem = {
   label: string;
@@ -24,8 +24,11 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: "Affiliate links", href: "/admin/links", icon: "links", permission: P.affiliateRead },
   { label: "Networks", href: "/admin/networks", icon: "networks", permission: P.affiliateRead },
   { label: "Programmes", href: "/admin/programs", icon: "programs", permission: P.affiliateRead },
+  { label: "Deals", href: "/admin/deals", icon: "deals", permission: P.dealWrite },
+  { label: "Coupons", href: "/admin/coupons", icon: "coupons", permission: P.dealWrite },
   { label: "Reports", href: "/admin/reports", icon: "reports", permission: P.reportView },
   { label: "Conversions", href: "/admin/conversions", icon: "conversions", permission: P.reportView },
+  { label: "Import and export", href: "/admin/import", icon: "import", permission: P.importRun },
   { label: "Audit log", href: "/admin/audit", icon: "audit", permission: P.auditView },
 ];
 

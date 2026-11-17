@@ -15,6 +15,8 @@ Plain, re-runnable SQL files in `drizzle/migrations/`, pasted into the Neon SQL 
 | `khushio-sql-phase-3c.sql` | Release 3C: `pg_trgm`, `products.search_vector` (generated), GIN, listing, price and store indexes | Once, before deploying 3C |
 | `khushio-sql-phase-4a.sql` | Release 4A: no schema change (marker file and a read-only status query for the /go redirect) | Once, before deploying 4A |
 | `khushio-sql-phase-4b.sql` | Release 4B: index `conv_converted_at_idx`, retention setting row `affiliate.click_retention_days` = 30 | Once, before deploying 4B |
+| `khushio-sql-phase-5a.sql` | Release 5A: four new tables (`deals`, `coupons`, `deal_products`, `deal_categories`), 9 indexes, 8 foreign keys | Once, before deploying 5A |
+| `khushio-sql-phase-5b.sql` | Release 5B: `affiliate_import_logs.entity` (nullable) and index `import_logs_started_idx` | Once, before deploying 5B |
 | `set-admin.sql` | Create or change the admin user (email, name, password) | After firstload, and whenever the admin changes |
 | `khushio-sql-phase-<release>.sql` | The release's own additions (one file per release) | In release order, before deploying that release's code |
 
@@ -26,7 +28,7 @@ No file is ever edited after its release ships. There is no `drizzle-kit migrate
 - Merchants and affiliate: merchants, merchant_programs, affiliate_networks, affiliate_links, affiliate_clicks, affiliate_click_daily, affiliate_conversions, affiliate_import_logs.
 - Platform: site_settings, feature_flags, navigation_items, homepage_sections, media_assets.
 
-Added after firstload: `login_attempts` (Release 2C, identity group) is the 30th table. Releases 3A to 4B only add columns, indexes and one settings row to existing tables (no new tables).
+Added after firstload: `login_attempts` (Release 2C, identity group) is the 30th table. Releases 3A to 4B only add columns, indexes and one settings row to existing tables (no new tables). Release 5A adds the deals group, so the database has **34 tables** after it (`deals`, `coupons`, `deal_products`, `deal_categories`). Release 5B adds one column to an existing table.
 
 ## Release scripts already written
 | Release | File | Contents |
@@ -40,13 +42,14 @@ Added after firstload: `login_attempts` (Release 2C, identity group) is the 30th
 | 4A | `khushio-sql-phase-4a.sql` | Nothing. The affiliate tables and indexes the redirect uses (`affiliate_links_slug_unique`, `clicks_link_time_idx`, `clicks_time_idx`, `merchants.allowed_domains`) exist since firstload; the status query proves it |
 | 4B | `khushio-sql-phase-4b.sql` | `conv_converted_at_idx` on `affiliate_conversions (converted_at)`; `INSERT ... ON CONFLICT DO NOTHING` of `site_settings` key `affiliate.click_retention_days` = 30 (running the file again never overwrites a value you changed) |
 
+| 5A | `khushio-sql-phase-5a.sql` | New tables `deals` (slug unique, status, window `starts_at`/`ends_at`, `is_featured`, `sort_order`), `coupons` (code unique per store ignoring case, optional deal), `deal_products`, `deal_categories`; indexes `deals_ends_at_idx`, `deals_merchant_ends_idx`, `deals_featured_sort_idx`, `coupons_*`, `deal_*_idx`. Nothing existing changes, so it is safe before the code |
+| 5B | `khushio-sql-phase-5b.sql` | `affiliate_import_logs.entity text NULL` (what was imported; old rows stay NULL) and `import_logs_started_idx` on `started_at` |
+
 ## Release scripts still to come
 | Release | File | Contents |
 | --- | --- | --- |
 | 4A | `khushio-sql-phase-4a.sql` | No schema change (marker file) |
 | 4B | `khushio-sql-phase-4b.sql` | Index on `affiliate_conversions (converted_at)`, retention setting row |
-| 5A | `khushio-sql-phase-5a.sql` | deals, coupons, deal_products, deal_categories and indexes |
-| 5B | `khushio-sql-phase-5b.sql` | Optional `entity` column on `affiliate_import_logs` |
 | 6A | `khushio-sql-phase-6a.sql` | articles, pages, content_categories, content_tags, article_tags, author_profiles, seo_metadata |
 | 6B | `khushio-sql-phase-6b.sql` | `type` column on articles and its index |
 | 7A | `khushio-sql-phase-7a.sql` | redirects table, missing seo_metadata indexes |

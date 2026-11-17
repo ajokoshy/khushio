@@ -219,3 +219,9 @@ export async function setImageOrder(productId: string, orderedIds: readonly stri
     orderedIds.map((imageId, index) => d.update(productImages).set({ sortOrder: index }).where(and(eq(productImages.id, imageId), eq(productImages.productId, productId)))),
   );
 }
+
+/** Product slug -> id for the slugs that exist (uses the unique slug index). Any status. */
+export async function selectProductIdsBySlugs(slugs: readonly string[]): Promise<{ id: string; slug: string }[]> {
+  if (slugs.length === 0) return [];
+  return db().select({ id: products.id, slug: products.slug }).from(products).where(inArray(products.slug, [...slugs]));
+}

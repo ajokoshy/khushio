@@ -6,6 +6,12 @@ const NOTICES: Record<string, string> = {
   created: "Created.",
   updated: "Saved.",
   deleted: "Deleted.",
+  featured: "The chosen deals were updated.",
+  expired: "The chosen deals were ended now.",
+  archived: "The chosen deals were archived.",
+  reordered: "The order was saved.",
+  nothing: "Nothing changed: tick at least one deal that the action applies to.",
+  failed: "That did not work. Check your permissions and try again.",
 };
 
 export function Notice({ code }: { code: string | undefined }) {

@@ -33,3 +33,12 @@ export async function buildClickReport(range: ReportRange, now: Date = new Date(
     conversions,
   };
 }
+
+export const CLICK_EXPORT_LIMIT = 20_000;
+
+/** Human clicks per link per day for the last `range` days (IST days), ready for a CSV. `truncated` is true when the cap was hit. */
+export async function exportClickRows(range: ReportRange, now: Date = new Date()): Promise<{ rows: (string | number)[][]; from: string; to: string; truncated: boolean }> {
+  const { from, to } = reportWindow(now, range);
+  const page = await repo.selectClicksForExport(from, to, CLICK_EXPORT_LIMIT + 1);
+  return { rows: page.slice(0, CLICK_EXPORT_LIMIT).map((r) => [r.day, r.slug, r.merchantSlug, r.productSlug ?? "", r.clicks]), from, to, truncated: page.length > CLICK_EXPORT_LIMIT };
+}

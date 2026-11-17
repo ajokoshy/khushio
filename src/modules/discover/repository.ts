@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, isNull, like, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, ilike, inArray, isNull, like, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { brands, categories, productCategories, products } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
@@ -163,4 +163,10 @@ export async function selectActiveBrandOptions(): Promise<BrandOption[]> {
 export async function selectActiveBrandBySlug(slug: string): Promise<BrandRow | null> {
   const [row] = await db().select(brandColumns).from(brands).where(and(eq(brands.slug, slug), eq(brands.isActive, true))).limit(1);
   return row ?? null;
+}
+
+/** Brands by slug in one query (imports). Uses brands_slug_unique. Archived brands are included. */
+export async function selectBrandsBySlugs(slugs: readonly string[]): Promise<BrandRow[]> {
+  if (slugs.length === 0) return [];
+  return db().select(brandColumns).from(brands).where(inArray(brands.slug, [...slugs]));
 }

@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, like, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, ilike, inArray, like, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { affiliateLinks, merchantPrograms, merchants } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
@@ -85,4 +85,15 @@ export async function countProgramsForMerchant(id: string): Promise<number> {
 export async function selectActiveMerchantBySlug(slug: string): Promise<MerchantRow | null> {
   const [row] = await db().select(columns).from(merchants).where(and(eq(merchants.slug, slug), eq(merchants.isActive, true))).limit(1);
   return row ?? null;
+}
+
+export async function selectMerchantBySlug(slug: string): Promise<MerchantRow | null> {
+  const [row] = await db().select(columns).from(merchants).where(eq(merchants.slug, slug)).limit(1);
+  return row ?? null;
+}
+
+/** Merchants by slug in one query (imports). Uses merchants_slug_unique. */
+export async function selectMerchantsBySlugs(slugs: readonly string[]): Promise<MerchantRow[]> {
+  if (slugs.length === 0) return [];
+  return db().select(columns).from(merchants).where(inArray(merchants.slug, [...slugs]));
 }

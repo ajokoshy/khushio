@@ -318,3 +318,8 @@ export async function moveProductImage(productId: string, imageId: string, direc
   await logAuditBestEffort({ actor: actor.id, action: "product.image_moved", entityType: "product", entityId: productId, metadata: { direction } });
   touch();
 }
+
+/** Product slug -> id for the slugs that exist, any status. Used by deals and by CSV imports of links. */
+export async function findProductIdsBySlugs(slugs: readonly string[]): Promise<Map<string, string>> {
+  return new Map((await repo.selectProductIdsBySlugs(slugs)).map((p) => [p.slug, p.id] as const));
+}

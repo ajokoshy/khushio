@@ -29,6 +29,7 @@ const page = <T>(rows: T[], limit: number) => ({ rows: rows.slice(0, limit), has
 function revalidateLinkViews() {
   revalidateTag(CACHE_TAGS.products);
   revalidateTag(CACHE_TAGS.dashboard);
+  revalidateTag(CACHE_TAGS.deals); // an offer's button goes through one of these links
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -286,4 +287,14 @@ export async function deleteLink(id: string, actorId: string): Promise<void> {
   await repo.deleteLinkRow(id);
   await logAuditBestEffort({ actor: actorId, action: "affiliate_link.deleted", entityType: "affiliate_link", entityId: id, metadata: { slug: current.slug, merchant: current.merchantName } });
   revalidateLinkViews();
+}
+
+/** A link by slug (id, store, active flag), for deals and coupons that point at a link. */
+export async function findLinkRefBySlug(slug: string): Promise<repo.LinkRef | null> {
+  return (await repo.selectLinkRefsBySlugs([slug]))[0] ?? null;
+}
+
+/** Link slug -> link for the slugs that exist (CSV imports). */
+export async function findLinkRefsBySlugs(slugs: readonly string[]): Promise<Map<string, repo.LinkRef>> {
+  return new Map((await repo.selectLinkRefsBySlugs(slugs)).map((l) => [l.slug, l] as const));
 }

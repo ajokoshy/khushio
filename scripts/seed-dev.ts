@@ -9,7 +9,7 @@
  */
 import { eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { brands, categories, merchants, productCategories, productTags, productVariants, products } from "@/core/database/schema";
+import { brands, categories, coupons, deals, merchants, productCategories, productTags, productVariants, products } from "@/core/database/schema";
 import { generateSeedProducts, SEED_BRANDS, SEED_CATEGORIES, SEED_MERCHANTS, type SeedCategory } from "./dev-seed-data";
 
 async function addCategories(nodes: SeedCategory[], parentId: string | null): Promise<number> {
@@ -52,6 +52,23 @@ async function addProducts(): Promise<number> {
   return added;
 }
 
+/** Three example offers on the first seeded store: one live, one that starts tomorrow, one that ends in two hours (plus a coupon on the live one). */
+async function addDeals(): Promise<number> {
+  const [store] = await db().select({ id: merchants.id }).from(merchants).where(eq(merchants.slug, SEED_MERCHANTS[0]?.slug ?? "")).limit(1);
+  if (!store) return 0;
+  const hour = 60 * 60 * 1000;
+  const now = Date.now();
+  const rows = [
+    { slug: "dev-deal-live", title: "Sample deal: live now", startsAt: new Date(now - hour), endsAt: new Date(now + 48 * hour), isFeatured: true, sortOrder: 0 },
+    { slug: "dev-deal-tomorrow", title: "Sample deal: starts tomorrow", startsAt: new Date(now + 24 * hour), endsAt: new Date(now + 72 * hour), isFeatured: false, sortOrder: 1 },
+    { slug: "dev-deal-ending", title: "Sample deal: ends in two hours", startsAt: new Date(now - 24 * hour), endsAt: new Date(now + 2 * hour), isFeatured: false, sortOrder: 2 },
+  ].map((d) => ({ ...d, merchantId: store.id, type: "deal", status: "published", description: "Example offer from the development seed." }));
+  const added = await db().insert(deals).values(rows).onConflictDoNothing().returning({ id: deals.id, slug: deals.slug });
+  const live = added.find((d) => d.slug === "dev-deal-live");
+  if (live) await db().insert(coupons).values({ dealId: live.id, merchantId: store.id, code: "DEVSAVE15", discountType: "percent", discountValue: 1500, startsAt: new Date(now - hour), endsAt: new Date(now + 48 * hour) }).onConflictDoNothing();
+  return added.length;
+}
+
 async function main() {
   if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
     throw new Error("Refusing to seed: NODE_ENV or VERCEL_ENV says production. Dev seeds are for development databases only.");
@@ -68,7 +85,8 @@ async function main() {
   const addedBrands = (await db().insert(brands).values(SEED_BRANDS).onConflictDoNothing().returning({ id: brands.id })).length;
   const addedMerchants = (await db().insert(merchants).values(SEED_MERCHANTS).onConflictDoNothing().returning({ id: merchants.id })).length;
   const addedProducts = await addProducts();
-  console.log(`Seeded ${host}: ${addedCategories} categories, ${addedBrands} brands, ${addedMerchants} merchants, ${addedProducts} products added.`);
+  const addedDeals = await addDeals();
+  console.log(`Seeded ${host}: ${addedCategories} categories, ${addedBrands} brands, ${addedMerchants} merchants, ${addedProducts} products, ${addedDeals} deals added.`);
 }
 
 main().catch((error) => {

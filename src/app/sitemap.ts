@@ -11,6 +11,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [
     { url: base, changeFrequency: "daily", priority: 1 },
     { url: `${base}/discover`, changeFrequency: "daily", priority: 0.8 },
+    // Only the list page: individual offers have no page of their own, so no ended offer can ever be in the sitemap.
+    { url: `${base}/deals`, changeFrequency: "daily", priority: 0.6 },
   ];
   try {
     const [products, categories, brands] = await Promise.all([listSitemapProducts(5000), listPublicCategoryOptions(), listBrandOptions()]);

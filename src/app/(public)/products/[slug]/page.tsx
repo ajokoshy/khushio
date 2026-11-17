@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { env } from "@/core/config/env";
 import { formatMinor } from "@/core/validation/money";
 import { imageUrl } from "@/infrastructure/cloudinary";
+import { getDealsForProduct } from "@/modules/deals/public";
+import { DealGrid } from "@/shared/deals/deal-list";
 import { getCategoryTrail } from "@/modules/discover/service";
 import { getProductPage, getRelatedProducts, listTopProductSlugs } from "@/modules/catalog/service";
 import { AffiliateLink } from "@/shared/catalog/affiliate-link";
@@ -37,7 +39,7 @@ export default async function ProductPage({ params }: Props) {
   const product = await getProductPage((await params).slug);
   if (!product) notFound(); // drafts, archived and not-yet-live products are indistinguishable from missing ones
 
-  const [trail, related] = await Promise.all([product.primaryCategoryId ? getCategoryTrail(product.primaryCategoryId) : Promise.resolve([]), getRelatedProducts(product)]);
+  const [trail, related, deals] = await Promise.all([product.primaryCategoryId ? getCategoryTrail(product.primaryCategoryId) : Promise.resolve([]), getRelatedProducts(product), getDealsForProduct(product.id)]);
   const [main, ...rest] = product.images;
   const paragraphs = (product.description ?? "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
 
@@ -99,6 +101,13 @@ export default async function ProductPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      {deals.length > 0 && (
+        <section aria-labelledby="deals-heading" className="mt-10">
+          <h2 id="deals-heading" className="text-xl">Offers for this product</h2>
+          <div className="mt-3"><DealGrid deals={deals} /></div>
+        </section>
+      )}
 
       {paragraphs.length > 0 && (
         <section aria-labelledby="about-heading" className="mt-10 max-w-prose">

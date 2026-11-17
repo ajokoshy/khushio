@@ -91,4 +91,9 @@ export const affiliateImportLogs = pgTable("affiliate_import_logs", {
   rowsFailed: integer("rows_failed").notNull().default(0),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
-});
+  /** Release 5B: what was imported (products, links, deals, brands, conversions). Null on rows written before 5B. */
+  entity: text("entity"),
+}, (t) => [
+  /** Release 5B: the import history lists the newest first. */
+  index("import_logs_started_idx").on(t.startedAt),
+]);

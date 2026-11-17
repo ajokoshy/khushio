@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { BarChart3, FolderTree, Handshake, Image as ImageIcon, LayoutDashboard, Link2, Menu, Network, Package, Receipt, ScrollText, Store, Tag, X, type LucideIcon } from "lucide-react";
+import { BarChart3, FolderTree, Handshake, Image as ImageIcon, FileSpreadsheet, TicketPercent, Percent, LayoutDashboard, Link2, Menu, Network, Package, Receipt, ScrollText, Store, Tag, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { AdminNavIcon } from "@/shared/navigation/admin-nav";
 import { cn } from "@/shared/ui/cn";
@@ -20,6 +20,9 @@ const ICONS: Record<AdminNavIcon, LucideIcon> = {
   programs: Handshake,
   reports: BarChart3,
   conversions: Receipt,
+  deals: Percent,
+  coupons: TicketPercent,
+  import: FileSpreadsheet,
 };
 
 type Item = { label: string; href: string; icon: AdminNavIcon };

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, like, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, like, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   affiliateClickDaily,
@@ -295,4 +295,12 @@ export async function selectLinksForProduct(productId: string): Promise<LinkRow[
 
 export async function markLinkVerified(id: string, at: Date): Promise<void> {
   await db().update(affiliateLinks).set({ lastVerifiedAt: at }).where(eq(affiliateLinks.id, id));
+}
+
+export type LinkRef = { id: string; slug: string; merchantId: string; isActive: boolean };
+
+/** Uses affiliate_links_slug_unique. */
+export async function selectLinkRefsBySlugs(slugs: readonly string[]): Promise<LinkRef[]> {
+  if (slugs.length === 0) return [];
+  return db().select({ id: affiliateLinks.id, slug: affiliateLinks.slug, merchantId: affiliateLinks.merchantId, isActive: affiliateLinks.isActive }).from(affiliateLinks).where(inArray(affiliateLinks.slug, [...slugs]));
 }

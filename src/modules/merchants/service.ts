@@ -101,6 +101,7 @@ export async function archiveMerchant(id: string, actorId: string): Promise<void
   await repo.updateMerchantRow(id, { isActive: false });
   await logAuditBestEffort({ actor: actorId, action: "merchant.archived", entityType: "merchant", entityId: id, metadata: { slug: current.slug } });
   revalidateTag(CACHE_TAGS.merchants);
+  revalidateTag(CACHE_TAGS.deals); // offers of an archived store disappear, and return when it is restored
 }
 
 export async function restoreMerchant(id: string, actorId: string): Promise<void> {
@@ -110,6 +111,7 @@ export async function restoreMerchant(id: string, actorId: string): Promise<void
   await repo.updateMerchantRow(id, { isActive: true });
   await logAuditBestEffort({ actor: actorId, action: "merchant.restored", entityType: "merchant", entityId: id, metadata: { slug: current.slug } });
   revalidateTag(CACHE_TAGS.merchants);
+  revalidateTag(CACHE_TAGS.deals); // offers of an archived store disappear, and return when it is restored
 }
 
 export async function deleteMerchant(id: string, actorId: string): Promise<void> {
@@ -121,6 +123,7 @@ export async function deleteMerchant(id: string, actorId: string): Promise<void>
   await repo.deleteMerchantRow(id);
   await logAuditBestEffort({ actor: actorId, action: "merchant.deleted", entityType: "merchant", entityId: id, metadata: { slug: current.slug, name: current.name } });
   revalidateTag(CACHE_TAGS.merchants);
+  revalidateTag(CACHE_TAGS.deals); // offers of an archived store disappear, and return when it is restored
 }
 
 const loadMerchantBySlug = unstable_cache((slug: string) => repo.selectActiveMerchantBySlug(slug), ["merchant-by-slug"], {
@@ -131,4 +134,14 @@ const loadMerchantBySlug = unstable_cache((slug: string) => repo.selectActiveMer
 /** A store page's data, or null when the merchant does not exist or is archived. Cached 24 hours, tag `merchants`. */
 export async function getPublicMerchant(slug: string): Promise<MerchantRow | null> {
   return loadMerchantBySlug(slug);
+}
+
+/** A merchant by id, archived or not (used by deals and coupons to check the store they are for). */
+export async function findMerchant(id: string): Promise<MerchantRow | null> {
+  return repo.selectMerchantById(id);
+}
+
+/** Merchants by slug, archived or not, as a slug -> merchant map (CSV imports). */
+export async function findMerchantsBySlugs(slugs: readonly string[]): Promise<Map<string, MerchantRow>> {
+  return new Map((await repo.selectMerchantsBySlugs(slugs)).map((m) => [m.slug, m]));
 }
