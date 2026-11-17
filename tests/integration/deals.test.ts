@@ -137,7 +137,7 @@ describe("scope on a product page", () => {
   });
 
   it("the store page lists every live offer of that store", async () => {
-    expect((await repo.selectDealsForMerchant(storeId)).map((d) => d.title).sort()).toEqual(["For headphones", "For phones parent", "For this product", "Store wide"]);
+    expect((await repo.selectDealsForMerchant(storeId)).map((d) => d.title).sort()).toEqual(["For headphones", "For phones parent", "For this product", "Store wide", "Unrelated product only"]);
   });
 });
 
