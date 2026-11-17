@@ -13,8 +13,11 @@ export const metadata: Metadata = {
   alternates: { canonical: `${env.NEXT_PUBLIC_SITE_URL}/deals` },
 };
 
+/** `next build` without a database (CI, forks) prerenders an empty list; the 5-minute revalidate fills it in at runtime. */
+const buildingWithoutDatabase = process.env.NEXT_PHASE === "phase-production-build" && !env.DATABASE_URL;
+
 export default async function DealsPage() {
-  const { deals, coupons } = await getDealsPage();
+  const { deals, coupons } = buildingWithoutDatabase ? { deals: [], coupons: [] } : await getDealsPage();
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Deals" }]} />
