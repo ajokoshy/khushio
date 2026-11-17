@@ -18,6 +18,8 @@ const EXPORTS = [
   { name: "brands", label: "Brands" },
 ] as const;
 
+const EXPORT_LINK_CLASS = "inline-block rounded-xl border border-forest-800 px-4 py-2.5 text-sm font-medium hover:bg-forest-100";
+
 export default async function ImportExportPage() {
   await requirePagePermission(P.importRun);
   const history = await recentImports(15);
@@ -46,9 +48,9 @@ export default async function ImportExportPage() {
         <h2 id="export-heading" className="text-xl">Export to CSV</h2>
         <p className="mt-1 max-w-prose text-sm text-ink-600">Opens in Excel or Google Sheets. The columns match the import templates, so you can edit a file and import it back.</p>
         <ul className="mt-3 flex flex-wrap gap-3">
-          {EXPORTS.map((e) => <li key={e.name}><a href={`/admin/export/${e.name}`} className="inline-block rounded-xl border border-forest-800 px-4 py-2.5 text-sm font-medium hover:bg-forest-100">{e.label}</a></li>)}
-          <li><a href="/admin/export/clicks?range=30" className="inline-block rounded-xl border border-forest-800 px-4 py-2.5 text-sm font-medium hover:bg-forest-100">Clicks, last 30 days</a></li>
-          <li><a href="/admin/export/clicks?range=90" className="inline-block rounded-xl border border-forest-800 px-4 py-2.5 text-sm font-medium hover:bg-forest-100">Clicks, last 90 days</a></li>
+          {EXPORTS.map((e) => <li key={e.name}><Link href={`/admin/export/${e.name}`} prefetch={false} className={EXPORT_LINK_CLASS}>{e.label}</Link></li>)}
+          <li><Link href="/admin/export/clicks?range=30" prefetch={false} className={EXPORT_LINK_CLASS}>Clicks, last 30 days</Link></li>
+          <li><Link href="/admin/export/clicks?range=90" prefetch={false} className={EXPORT_LINK_CLASS}>Clicks, last 90 days</Link></li>
         </ul>
       </section>
 
