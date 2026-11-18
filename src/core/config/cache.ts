@@ -5,6 +5,8 @@ export const CACHE_TTL = {
   merchants: 60 * 60 * 24,
   products: 60 * 30,
   homepage: 60 * 10,
+  /** Articles and pages: short, because scheduled articles go live by the clock, not by a job (modules/content/public.ts). */
+  articles: 60 * 5,
   /** Also the /deals page's revalidate (src/app/(public)/deals/page.tsx). Keep it below START_LOOKAHEAD_MS in modules/deals/window.ts. */
   deals: 60 * 5,
   siteSettings: 60 * 30,

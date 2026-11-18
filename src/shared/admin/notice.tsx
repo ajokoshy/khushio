@@ -11,6 +11,7 @@ const NOTICES: Record<string, string> = {
   archived: "The chosen deals were archived.",
   reordered: "The order was saved.",
   nothing: "Nothing changed: tick at least one deal that the action applies to.",
+  invalid: "That could not be saved. Check the name is filled in and not already used.",
   failed: "That did not work. Check your permissions and try again.",
 };
 

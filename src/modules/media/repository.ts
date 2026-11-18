@@ -48,18 +48,29 @@ export async function deleteMediaRow(id: string): Promise<void> {
   await db().delete(mediaAssets).where(eq(mediaAssets.id, id));
 }
 
-/** Uses images_public_id_idx. */
+/**
+ * How many articles and pages use a file: as an article's cover, or as an image inside the article or page text.
+ * The text is a JSON document, and Postgres writes a jsonb text as  "publicId": "<id>"  (colon, one space), so a plain
+ * substring test finds every image node. The tables are small; a count per media row on one admin page is cheap.
+ */
+const contentUses = (publicId: SQL | string) => sql<number>`(
+  (select count(*)::int from articles a where a.cover_public_id = ${publicId} or position('"publicId": ' || to_json(${publicId}::text)::text in a.content::text) > 0)
+  + (select count(*)::int from pages p where position('"publicId": ' || to_json(${publicId}::text)::text in p.content::text) > 0)
+)`;
+
+/** Uses images_public_id_idx for products; articles and pages are read by content (see contentUses). */
 export async function countImageUses(publicId: string): Promise<number> {
   const [row] = await db().select({ n: count() }).from(productImages).where(eq(productImages.publicId, publicId));
-  return Number(row?.n ?? 0);
+  const [content] = await db().select({ n: contentUses(publicId) }).from(sql`(select 1) as one`);
+  return Number(row?.n ?? 0) + Number(content?.n ?? 0);
 }
 
 /** Newest first, with how many product images use each file. "unused" keeps only files nothing uses. */
 export async function selectMedia(opts: { q?: string; usage: MediaUsageFilter; limit: number; offset: number }): Promise<MediaListRow[]> {
-  const usedBy = sql<number>`(select count(*)::int from ${productImages} where ${productImages.publicId} = ${mediaAssets.publicId})`;
+  const usedBy = sql<number>`((select count(*)::int from ${productImages} where ${productImages.publicId} = ${mediaAssets.publicId}) + ${contentUses(sql`${mediaAssets.publicId}`)})`;
   const conditions: (SQL | undefined)[] = [];
   if (opts.q) conditions.push(ilike(mediaAssets.publicId, `%${escapeLike(opts.q)}%`));
-  if (opts.usage === "unused") conditions.push(sql`not exists (select 1 from ${productImages} where ${productImages.publicId} = ${mediaAssets.publicId})`);
+  if (opts.usage === "unused") conditions.push(sql`(not exists (select 1 from ${productImages} where ${productImages.publicId} = ${mediaAssets.publicId}) and ${contentUses(sql`${mediaAssets.publicId}`)} = 0)`);
   const rows = await db()
     .select({ ...mediaColumns, usedBy })
     .from(mediaAssets)

@@ -30,7 +30,7 @@ const columns: Column<MediaListRow>[] = [
   },
   { key: "file", header: "File", cell: (m) => <><code className="break-all text-xs">{m.publicId.replace("khushio/products/", "")}</code><div className="text-xs text-ink-600">{m.width && m.height ? `${m.width}×${m.height}` : ""} {kilobytes(m.bytes)}</div></> },
   { key: "alt", header: "Default description", cell: (m) => <AltEditor id={m.id} initial={m.alt ?? ""} /> },
-  { key: "used", header: "Used by", cell: (m) => (m.usedBy === 0 ? <span className="rounded-full bg-coral-100 px-2 py-0.5 text-xs text-coral-600">Unused</span> : `${m.usedBy} product image${m.usedBy === 1 ? "" : "s"}`) },
+  { key: "used", header: "Used by", cell: (m) => (m.usedBy === 0 ? <span className="rounded-full bg-coral-100 px-2 py-0.5 text-xs text-coral-600">Unused</span> : `${m.usedBy} use${m.usedBy === 1 ? "" : "s"}`) },
   {
     key: "actions",
     header: "Actions",

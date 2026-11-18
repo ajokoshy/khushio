@@ -2,5 +2,6 @@ export * from "./identity";
 export * from "./catalog";
 export * from "./merchants-affiliate";
 export * from "./deals";
+export * from "./content";
 export * from "./platform";
-// CMS and SEO tables arrive with Phases 6-7 (no tables for inactive modules).
+// Redirects, notifications and scheduled jobs arrive with the releases that use them (no tables for inactive modules).

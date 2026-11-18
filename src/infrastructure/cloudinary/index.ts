@@ -9,6 +9,11 @@ export function cloudinaryConfigured(): boolean {
   return !!(env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET);
 }
 
+/** The cloud name is public (it is in every image address); the editor needs it to draw pictures from their ids. */
+export function publicCloudName(): string | null {
+  return env.CLOUDINARY_CLOUD_NAME ?? null;
+}
+
 function credentials() {
   const { CLOUDINARY_CLOUD_NAME: cloudName, CLOUDINARY_API_KEY: apiKey, CLOUDINARY_API_SECRET: apiSecret } = env;
   if (!cloudName || !apiKey || !apiSecret) throw new Error("Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.");

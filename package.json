@@ -18,6 +18,11 @@
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@neondatabase/serverless": "^1.0.0",
+    "@tiptap/extension-image": "^2.27.3",
+    "@tiptap/extension-link": "^2.27.3",
+    "@tiptap/pm": "^2.27.3",
+    "@tiptap/react": "^2.27.3",
+    "@tiptap/starter-kit": "^2.27.3",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.0",

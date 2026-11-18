@@ -1,6 +1,6 @@
 # Status
 
-**Standing instruction for Claude:** every time you deliver a new code zip, deliver the updated project guide (Khushio_Project_Guide_and_Phased_Roadmap.docx) in the same reply: raise the version and the "built up to" line, update section 2 (status and what was verified), the release's own section, sections 7.5 and 8, section 19, and say what was not run. See guide section 5, rule 7.
+**Standing instruction for Claude:** the project guide is updated with EVERY update, not only with new code zips. Whenever you deliver a zip, a fix or any other change, deliver the updated project guide (Khushio_Project_Guide_and_Phased_Roadmap.docx) in the same reply: raise the version (a small change gets a point version), update the "built up to" line, add a "What changed" entry, update section 2 (status and what was verified), the release's own section, sections 7.5 and 8 and section 19, and say what was not run. See guide section 5, rule 7.
 
 Last updated at the end of Releases 4A and 4B. **Built up to Release 4B.** Next: Release 5A (deals and coupons).
 
@@ -112,8 +112,8 @@ Run first on your machine: `npm install`, `npm run typecheck`, `npm run lint`, `
 
 ## Next three tasks
 1. Run the smoke checklists for 3B, 3C, 4A and 4B on a preview branch, then production; tag `phase-3b`, `phase-3c`, `phase-4a`, `phase-4b`.
-2. Release 5A: deals and coupons.
-3. Release 5B: CSV import and export.
+2. Run the 5A, 5B and 6A smoke checklists on a preview branch, then production; tag `phase-5a`, `phase-5b`, `phase-6a`.
+3. Release 6B: guides and comparison content.
 
 ## Release 5A: deals and coupons (done, not yet run against Neon)
 - Database script `khushio-sql-phase-5a.sql`: four NEW tables (`deals`, `coupons`, `deal_products`, `deal_categories`). Safe to run before the code. Read the status row: tables 4, indexes 9, foreign keys 8. The database then has 34 tables.
@@ -144,3 +144,29 @@ Run first on your machine: `npm install`, `npm run typecheck`, `npm run lint`, `
 - Archive the store: its offers disappear; restore it: they return.
 - `/admin/import`: download the brands template, import it twice: the second time says "already up to date". Import a products file with two variants of one product, then change a price and import again: one update, no duplicates. Try a link with a destination on another domain: refused with its line number. Download the problem CSV, fix, import again.
 - Export products, open in Excel, import the same file: everything "already up to date".
+
+## Release 6A: articles, pages and the editor (done, not yet run against Neon)
+- Database script `khushio-sql-phase-6a.sql`: seven NEW tables (`author_profiles`, `content_categories`, `content_tags`, `articles`, `article_tags`, `pages`, `seo_metadata`). Safe to run before the code. Status row: tables 7, indexes 9, foreign keys 4. The database then has 41 tables. **No new permission and no new environment variable:** `content:write`, `content:publish` and `seo:write` already existed (owner and editor roles hold them), so nobody needs to sign in again.
+- Admin: `/admin/articles` (search, filter by status), `/admin/articles/new`, `/admin/articles/[id]`; `/admin/pages` (same three screens); `/admin/authors`; `/admin/topics` (topics and tags). The editor is Tiptap v2 (`@tiptap/react`, `starter-kit`, `extension-link`, `extension-image`, plus the required peer `@tiptap/pm`). It offers bold, italic, heading, subheading, bullets, numbers, quote, link, picture, undo and redo. Pictures come from the media library (search) or are uploaded with the same signed Cloudinary upload as products; they land in the library and are recorded there.
+- **Stored as JSON, never HTML.** `modules/content/document.ts` rebuilds every document through a whitelist (paragraph, heading 2 to 4, bullet and ordered lists, quote, line break, image, bold, italic, link). Unknown nodes are dropped with everything inside them; links must be http, https, mailto or a path starting with `/` (`javascript:`, `data:` and control-character tricks are refused); an image keeps only a library public id, a description and a size, never an address. The same function runs when a form is saved and again when a page is drawn, and `shared/content/document-renderer.tsx` draws with React elements only (no `dangerouslySetInnerHTML` anywhere), so a row written by an import or a script can not put markup on the page either.
+- **Statuses and visibility:** DRAFT, REVIEW, SCHEDULED, PUBLISHED, ARCHIVED. Visitors see an item while `PUBLISHED`, or `SCHEDULED` with `publish_at <= now()` (`modules/content/visibility.ts`, an in-code twin and a SQL twin). No job is needed for scheduling: lists are filtered with the database clock whenever they rebuild, single articles are checked again with the clock at call time. `CACHE_TTL.articles` is 5 minutes, and article and page routes use `revalidate = 300`, so a scheduled article appears **within about 5 minutes after its time**; every editor write clears the `articles` tag at once.
+- **Who may do what:** `content:write` writes and moves things between Draft and In review. Publishing, scheduling, archiving and pulling live content back needs `content:publish`. Changing the search fields needs `seo:write`; without it the fields are shown locked and the saved values are never touched. Publishing needs some text or a picture; Scheduled needs a future time; Published may not carry a future time. A published or scheduled item can not be deleted: archive it first.
+- Public: `/articles` (newest first, 12 per page, topic chips), `/articles/<slug>` (cover, author, date, reading time, topic and tags, affiliate disclosure), `/articles/category/<slug>`, `/articles/tag/<slug>` (tag pages are `noindex`), `/p/<slug>` for stand-alone pages. Later list pages are `noindex` with the first page as canonical. Search title, description, canonical, share image and robots come from `seo_metadata`, otherwise from the content. The sitemap gains `/articles`, topics with visible articles, visible articles and pages; anything set to "keep out of search results" is left out. A **Articles** link was added to the site header (the existing Guides link is unchanged for 6B).
+- Rules worth knowing: the slugs `category` and `tag` are reserved for articles; a topic's or tag's address never changes after it is created (only its name does); topics can be hidden (no page, not selectable); deleting an author or topic keeps the articles; deleting a tag removes it from the articles; a picture used as a cover or inside an article or page counts as "used" in the media library and cannot be deleted there (`media/repository.ts` looks for the public id in the article and page JSON). Article pictures use the existing `khushio/products` Cloudinary folder (the signature is locked to it).
+- Not in 6A on purpose: structured data (JSON-LD) and redirects (7A), the guide and comparison article types (6B), author pages, related articles, search inside articles.
+- Test setup change: `vitest.config.ts` now sets `esbuild.jsx = "automatic"` so a test can render a React component (the renderer test does).
+
+## Verified in the build environment (Release 6A)
+This time the environment **had the npm registry**: `npm ci` and the Tiptap install worked, and these were actually run, all passing: `tsc --noEmit` (no errors), `eslint` (no problems in new files; one older `no-explicit-any` error remains in `tests/unit/admin-actions.test.ts` and three warnings that are not from 6A), the **full Vitest suite (591 tests passed, 1 skipped Neon test)** including the new `content-document`, `content-rules`, `content-renderer` unit tests, the 6A SQL script tests and `tests/integration/content.test.ts` (23 tests against embedded Postgres: lifecycle, scheduling by the database clock, who may publish, slugs, tags, SEO rows, topics and authors, media usage, sitemap, cache tag). **`next build` compiled all routes** (with the two Google fonts temporarily stubbed, because the sandbox could not reach fonts.googleapis.com; the layout was restored afterwards). The editor adds about 115 kB only to the admin article and page screens; public routes stay at about 106 kB first load.
+**Not run:** the Tiptap editor in a real browser (toolbar, picture picker, upload to Cloudinary, keyboard use), the admin screens against Neon, and the Neon smoke test (it now expects 41 tables).
+
+## Smoke checklist for 6A (preview, then production)
+- Run `khushio-sql-phase-6a.sql` on the branch; read the status row (7 / 9 / 4).
+- `/admin/authors`: add an author. `/admin/topics`: add a topic and a tag.
+- `/admin/articles/new`: write a heading, a paragraph with a bold word and a link, a bullet list and a quote; add a picture from the library and one by uploading; choose a cover; set the author, topic and tags; save as Draft. `/articles` must NOT show it; opening `/articles/<slug>` gives 404.
+- Edit it, set Published: it appears on `/articles`, under its topic and under its tag, with author, date and reading time. View source: no `<script>` from your text. Paste `javascript:alert(1)` as a link address: the editor refuses it.
+- Schedule another article for five minutes ahead (India time): hidden now; after the time plus up to 5 minutes it appears with no action from you.
+- Set an article to "Keep out of search results" (needs `seo:write`): `/sitemap.xml` leaves it out and the page has `noindex`.
+- Try the publishing rules: Published with no text is refused; Scheduled with a past time is refused. Archive an article: its address now shows 404; then delete it.
+- `/admin/media`: the cover and inline pictures show "1 use" and refuse deletion until removed from the article.
+- Create a page "About" and publish it: `/p/about` works and is in the sitemap.

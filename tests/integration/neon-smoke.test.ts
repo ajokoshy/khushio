@@ -9,12 +9,13 @@ import { describe, expect, it } from "vitest";
 const url = process.env.TEST_DATABASE_URL;
 
 describe.skipIf(!url)("Neon test branch", () => {
-  it("has every table and the Release 2C, 3A, 3B, 3C and 5A additions", async () => {
+  it("has every table and the Release 2C, 3A, 3B, 3C, 5A and 6A additions", async () => {
     const run = neon(url as string);
     const tables = (await run`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`).map((r) => r.table_name as string);
     expect(tables).toContain("login_attempts");
     expect(tables).toEqual(expect.arrayContaining(["deals", "coupons", "deal_products", "deal_categories"]));
-    expect(tables.length).toBe(34);
+    expect(tables).toEqual(expect.arrayContaining(["author_profiles", "content_categories", "content_tags", "articles", "article_tags", "pages", "seo_metadata"]));
+    expect(tables.length).toBe(41);
     const cols = await run`SELECT 1 FROM information_schema.columns WHERE table_name = 'brands' AND column_name = 'is_active'`;
     expect(cols.length).toBe(1);
     const idx = await run`SELECT 1 FROM pg_indexes WHERE indexname = 'categories_parent_name_uq'`;

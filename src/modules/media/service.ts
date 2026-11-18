@@ -1,6 +1,7 @@
 import { logAuditBestEffort } from "@/core/audit";
-import { ConflictError, NotFoundError } from "@/core/errors";
+import { ConflictError, NotFoundError, ValidationError } from "@/core/errors";
 import { uniqueViolationOf } from "@/core/validation/slug";
+import { uploadProblem, type UploadResult } from "@/infrastructure/cloudinary/upload-rules";
 import * as repo from "./repository";
 import type { MediaRow, MediaUsageFilter, MediaWrite } from "./types";
 
@@ -57,7 +58,7 @@ export async function deleteUnusedMedia(id: string, actorId: string, removeFromC
   const asset = await repo.selectMediaById(id);
   if (!asset) throw new NotFoundError("Image not found");
   const uses = await repo.countImageUses(asset.publicId);
-  if (uses > 0) throw new ConflictError(`${uses} product image${uses === 1 ? " uses" : "s use"} this file, so it cannot be deleted. Remove it from the product first.`);
+  if (uses > 0) throw new ConflictError(`This file is used ${uses} time${uses === 1 ? "" : "s"} (product images, article covers or pictures in an article or page), so it cannot be deleted. Remove it from there first.`);
   if (!(await removeFromCloudinary(asset.publicId))) throw new ConflictError("The file could not be removed from Cloudinary. Try again in a moment.");
   await repo.deleteMediaRow(id);
   await logAuditBestEffort({ actor: actorId, action: "media.deleted", entityType: "media", entityId: id, metadata: { publicId: asset.publicId } });
@@ -65,4 +66,25 @@ export async function deleteUnusedMedia(id: string, actorId: string, removeFromC
 
 export async function getMediaByPublicId(publicId: string): Promise<MediaRow | null> {
   return repo.selectMediaByPublicId(publicId);
+}
+
+/**
+ * A browser upload that is not attached to a product (the article editor and the article cover). Same checks as a
+ * product image: the signature proves Cloudinary stored the file, the rules limit type and size, and a file that is
+ * already in the library is reused (the redundant copy is removed from Cloudinary).
+ */
+export async function addToLibrary(
+  upload: UploadResult,
+  alt: string | null,
+  actorId: string,
+  deps: { apiSecret: string; removeFromCloudinary: (publicId: string) => Promise<boolean> },
+): Promise<MediaRow> {
+  const problem = uploadProblem(upload, deps.apiSecret);
+  if (problem) {
+    if (problem !== "The upload could not be verified. Try again.") await deps.removeFromCloudinary(upload.public_id);
+    throw new ValidationError("Upload rejected", { image: problem });
+  }
+  const { asset, duplicate } = await recordUpload({ publicId: upload.public_id, contentHash: upload.etag ?? null, width: upload.width, height: upload.height, bytes: upload.bytes, alt }, actorId);
+  if (duplicate) await deps.removeFromCloudinary(upload.public_id);
+  return asset;
 }

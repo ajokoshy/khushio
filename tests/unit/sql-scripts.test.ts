@@ -315,3 +315,37 @@ describe("khushio-sql-phase-5b.sql (CSV import and export)", () => {
     expect((await db.query<{ entity: string | null }>("SELECT entity FROM affiliate_import_logs WHERE source = 'csv:old'")).rows[0]?.entity).toBeNull();
   });
 });
+
+describe("khushio-sql-phase-6a.sql (articles, pages and the editor)", () => {
+  const count = async (table: string) => Number((await db.query<{ n: number }>(`SELECT count(*) AS n FROM ${table}`)).rows[0]?.n);
+
+  it("creates exactly the seven new tables, and its status row reports them", async () => {
+    const results = await db.exec(read("khushio-sql-phase-6a.sql"));
+    const row = results.at(-1)?.rows[0] as Record<string, unknown>;
+    expect(Number(row.tables_of_7)).toBe(7);
+    expect(Number(row.indexes_of_9)).toBe(9);
+    expect(Number(row.foreign_keys_of_4)).toBe(4);
+    expect(row.status).toBe("khushio-sql-phase-6a applied");
+  });
+
+  it("is safe to run again on a database that already has articles", async () => {
+    await db.exec("INSERT INTO articles (slug, title) VALUES ('first-article', 'First article')");
+    await db.exec(read("khushio-sql-phase-6a.sql"));
+    expect(await count("articles")).toBe(1);
+    const row = (await db.query<{ status: string; content: unknown }>("SELECT status, content FROM articles WHERE slug = 'first-article'")).rows[0];
+    expect(row?.status).toBe("DRAFT");
+    expect(row?.content).toEqual({ type: "doc", content: [] });
+  });
+
+  it("keeps one search row per item, one tag name per spelling, and sets a deleted author to NULL", async () => {
+    const A = "44444444-4444-4444-8444-444444444444";
+    await db.exec(`INSERT INTO seo_metadata (entity_type, entity_id, title) VALUES ('article', '${A}', 'one')`);
+    await expect(db.exec(`INSERT INTO seo_metadata (entity_type, entity_id, title) VALUES ('article', '${A}', 'two')`)).rejects.toThrow();
+    await db.exec("INSERT INTO content_tags (slug, name) VALUES ('tea', 'Tea')");
+    await expect(db.exec("INSERT INTO content_tags (slug, name) VALUES ('tea-2', 'TEA')")).rejects.toThrow();
+    await db.exec("INSERT INTO author_profiles (id, slug, display_name) VALUES ('55555555-5555-4555-8555-555555555555', 'asha', 'Asha')");
+    await db.exec("UPDATE articles SET author_id = '55555555-5555-4555-8555-555555555555' WHERE slug = 'first-article'");
+    await db.exec("DELETE FROM author_profiles WHERE slug = 'asha'");
+    expect((await db.query<{ author_id: string | null }>("SELECT author_id FROM articles WHERE slug = 'first-article'")).rows[0]?.author_id).toBeNull();
+  });
+});
