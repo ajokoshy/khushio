@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { visibleProductCondition } from "@/core/catalog/visibility";
 import {
+  affiliateClickDaily,
   affiliateLinks,
   brands,
   collectionProducts,
@@ -16,7 +17,7 @@ import {
 } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
 import { encodeCursor, type Cursor } from "./cursor";
-import type { CatalogCard, ProductDetailPublic, Sort } from "./types";
+import type { CatalogCard, CollectionTile, EmbedProduct, ProductDetailPublic, Sort, TrendingMode } from "./types";
 
 /**
  * Repository for the PUBLIC side: every query here goes through visibleProductCondition(), so a draft, archived or
@@ -60,6 +61,55 @@ const toCard = (r: { [K in keyof typeof cardColumns]: unknown }): CatalogCard =>
   minPriceMinor: r.minPriceMinor === null || r.minPriceMinor === undefined ? null : Number(r.minPriceMinor),
   maxPriceMinor: r.maxPriceMinor === null || r.maxPriceMinor === undefined ? null : Number(r.maxPriceMinor),
 });
+
+/* ------------------------------ product embeds (6B) ------------------------------ */
+
+const embedLinkSlug = sql<string | null>`(select ${affiliateLinks.slug} from ${affiliateLinks} inner join ${merchants} on ${merchants.id} = ${affiliateLinks.merchantId} where ${affiliateLinks.productId} = ${products.id} and ${affiliateLinks.isActive} and ${merchants.isActive} order by ${merchants.name}, ${affiliateLinks.slug} limit 1)`;
+const embedMerchantName = sql<string | null>`(select ${merchants.name} from ${affiliateLinks} inner join ${merchants} on ${merchants.id} = ${affiliateLinks.merchantId} where ${affiliateLinks.productId} = ${products.id} and ${affiliateLinks.isActive} and ${merchants.isActive} order by ${merchants.name}, ${affiliateLinks.slug} limit 1)`;
+
+/**
+ * The products an article embeds, in ONE query for all of them. Goes through visibleProductCondition(): a draft, archived or
+ * not-yet-live product is simply missing from the result, and the article leaves its embed out instead of showing a broken card.
+ */
+export async function selectEmbedProducts(ids: readonly string[]): Promise<EmbedProduct[]> {
+  if (ids.length === 0) return [];
+  const rows = await db()
+    .select({ ...cardColumns, linkSlug: embedLinkSlug, merchantName: embedMerchantName })
+    .from(products)
+    .leftJoin(brands, activeBrandJoin)
+    .where(and(inArray(products.id, [...ids]), visibleProductCondition()));
+  return rows.map((r) => ({ ...toCard(r), linkSlug: r.linkSlug ?? null, merchantName: r.merchantName ?? null }));
+}
+
+/* ------------------------------ homepage reads (6B) ------------------------------ */
+
+/**
+ * The homepage "trending" products in ONE query. "popular" orders by the outbound clicks of the last 30 days from the daily
+ * roll-up (Release 4B), then featured, then newest, so a shop with no clicks yet still shows a sensible row instead of nothing.
+ */
+export async function selectTrendingCards(mode: TrendingMode, limit: number): Promise<CatalogCard[]> {
+  const clicks = sql<number>`(select coalesce(sum(${affiliateClickDaily.clicks}), 0) from ${affiliateClickDaily} inner join ${affiliateLinks} on ${affiliateLinks.id} = ${affiliateClickDaily.linkId} where ${affiliateLinks.productId} = ${products.id} and ${affiliateClickDaily.day} >= current_date - 30)`;
+  const order = mode === "popular" ? [desc(clicks), desc(products.isFeatured), desc(products.createdAt), desc(products.id)] : mode === "newest" ? [desc(products.createdAt), desc(products.id)] : [desc(products.isFeatured), desc(products.createdAt), desc(products.id)];
+  const rows = await db().select(cardColumns).from(products).leftJoin(brands, activeBrandJoin).where(visibleProductCondition()).orderBy(...order).limit(limit);
+  return rows.map(toCard);
+}
+
+/** Active collections by id, in the order asked, each with how many visible products it holds. One query. */
+export async function selectCollectionTiles(ids: readonly string[]): Promise<CollectionTile[]> {
+  if (ids.length === 0) return [];
+  const count = sql<number>`(select count(*)::int from ${collectionProducts} inner join ${products} on ${products.id} = ${collectionProducts.productId} where ${collectionProducts.collectionId} = ${productCollections.id} and ${visibleProductCondition()})`;
+  const rows = await db()
+    .select({ id: productCollections.id, slug: productCollections.slug, name: productCollections.name, description: productCollections.description, productCount: count })
+    .from(productCollections)
+    .where(and(inArray(productCollections.id, [...ids]), eq(productCollections.isActive, true)));
+  const byId = new Map(rows.map((r) => [r.id, { ...r, productCount: Number(r.productCount) }]));
+  return ids.flatMap((id) => byId.get(id) ?? []);
+}
+
+/** Active collections for the admin section form (name only). */
+export async function selectCollectionOptions(): Promise<{ id: string; name: string }[]> {
+  return db().select({ id: productCollections.id, name: productCollections.name }).from(productCollections).where(eq(productCollections.isActive, true)).orderBy(asc(productCollections.name));
+}
 
 /* -------------------------------- listings -------------------------------- */
 

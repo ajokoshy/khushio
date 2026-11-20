@@ -13,6 +13,36 @@ export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
 
 export type ContentFilter = "all" | ContentStatus;
 
+/** Release 6B: what kind of piece an article row is. They share one table, one editor and one set of statuses. */
+export const ARTICLE_TYPES = ["article", "guide", "review", "comparison", "how-to"] as const;
+export type ArticleType = (typeof ARTICLE_TYPES)[number];
+
+export const ARTICLE_TYPE_LABELS: Record<ArticleType, string> = {
+  article: "Article",
+  guide: "Buying guide",
+  review: "Review",
+  comparison: "Comparison",
+  "how-to": "How-to",
+};
+
+/** Plural headings for the /guides filter chips and pages. */
+export const ARTICLE_TYPE_PLURALS: Record<ArticleType, string> = {
+  article: "Articles",
+  guide: "Buying guides",
+  review: "Reviews",
+  comparison: "Comparisons",
+  "how-to": "How-tos",
+};
+
+/** The types shown under /guides (everything except the plain article). */
+export const GUIDE_TYPES = ARTICLE_TYPES.filter((t) => t !== "article") as readonly ArticleType[];
+
+export function isArticleType(value: string): value is ArticleType {
+  return (ARTICLE_TYPES as readonly string[]).includes(value);
+}
+
+export type TypeFilter = "all" | ArticleType;
+
 /** Slugs an article can not use, because /articles/category/... and /articles/tag/... are listing pages. */
 export const RESERVED_ARTICLE_SLUGS: readonly string[] = ["category", "tag"];
 
@@ -36,6 +66,7 @@ export type ArticleListRow = {
   id: string;
   slug: string;
   title: string;
+  type: ArticleType;
   status: ContentStatus;
   publishAt: Date | null;
   updatedAt: Date;
@@ -55,6 +86,7 @@ export type ArticleRow = ArticleListRow & {
 export type ArticleWrite = {
   slug: string;
   title: string;
+  type: ArticleType;
   excerpt: string | null;
   content: Doc;
   status: ContentStatus;
@@ -78,6 +110,7 @@ export type TagRow = { id: string; slug: string; name: string; articleCount: num
 export type PublicArticleSummary = {
   slug: string;
   title: string;
+  type: ArticleType;
   excerpt: string | null;
   publishAt: Date | null;
   coverPublicId: string | null;

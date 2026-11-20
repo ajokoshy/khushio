@@ -49,6 +49,8 @@ export const articles = pgTable("articles", {
   id: id(),
   slug: text("slug").notNull().unique(),
   title: text("title").notNull(),
+  /** Release 6B: article | guide | review | comparison | how-to (src/modules/content/types.ts). One table, one editor, one set of statuses. */
+  type: text("type").notNull().default("article"),
   excerpt: text("excerpt"),
   /** The Tiptap/ProseMirror document. Always passed through sanitizeDocument() before it is stored. */
   content: jsonb("content").notNull().default(sql`'{"type":"doc","content":[]}'::jsonb`),
@@ -65,6 +67,8 @@ export const articles = pgTable("articles", {
   updatedAt: updatedAt(),
 }, (t) => [
   index("articles_status_publish_idx").on(t.status, t.publishAt),
+  /** Release 6B: the /guides pages. */
+  index("articles_type_status_publish_idx").on(t.type, t.status, t.publishAt),
   index("articles_category_idx").on(t.categoryId),
   index("articles_author_idx").on(t.authorId),
 ]);

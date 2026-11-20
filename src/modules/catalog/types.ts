@@ -49,3 +49,17 @@ export type ProductDetailPublic = {
   /** Active affiliate links to active merchants. The /go redirect arrives in Release 4A. */
   links: { slug: string; merchantName: string }[];
 };
+
+/** A product shown inside an article (Release 6B): live price range, picture and the first working store link. */
+export type EmbedProduct = CatalogCard & {
+  /** Slug of the first active affiliate link to an active store, for the /go redirect. Null when the product has none. */
+  linkSlug: string | null;
+  merchantName: string | null;
+};
+
+/** Release 6B, homepage "trending products": featured first, newest, or the most outbound clicks of the last 30 days. */
+export const TRENDING_MODES = ["featured", "newest", "popular"] as const;
+export type TrendingMode = (typeof TRENDING_MODES)[number];
+
+/** A collection as a tile on the homepage. */
+export type CollectionTile = { id: string; slug: string; name: string; description: string | null; productCount: number };

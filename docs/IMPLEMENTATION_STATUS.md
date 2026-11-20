@@ -2,7 +2,7 @@
 
 **Standing instruction for Claude:** the project guide is updated with EVERY update, not only with new code zips. Whenever you deliver a zip, a fix or any other change, deliver the updated project guide (Khushio_Project_Guide_and_Phased_Roadmap.docx) in the same reply: raise the version (a small change gets a point version), update the "built up to" line, add a "What changed" entry, update section 2 (status and what was verified), the release's own section, sections 7.5 and 8 and section 19, and say what was not run. See guide section 5, rule 7.
 
-Last updated at the end of Releases 4A and 4B. **Built up to Release 4B.** Next: Release 5A (deals and coupons).
+Last updated at the end of Release 6B. **Built up to Release 6B.** Next: Release 7A (SEO, structured data and redirects).
 
 ## Phase 1: foundation (done)
 Structure, design tokens, layout shell, env validation, Drizzle schema, health endpoint, robots/sitemap, security headers, Vitest setup.
@@ -112,8 +112,8 @@ Run first on your machine: `npm install`, `npm run typecheck`, `npm run lint`, `
 
 ## Next three tasks
 1. Run the smoke checklists for 3B, 3C, 4A and 4B on a preview branch, then production; tag `phase-3b`, `phase-3c`, `phase-4a`, `phase-4b`.
-2. Run the 5A, 5B and 6A smoke checklists on a preview branch, then production; tag `phase-5a`, `phase-5b`, `phase-6a`.
-3. Release 6B: guides and comparison content.
+2. Run the 5A, 5B, 6A and 6B smoke checklists on a preview branch, then production; tag `phase-5a`, `phase-5b`, `phase-6a`, `phase-6b`.
+3. Run the 6B smoke checklist, then Release 7A (SEO, structured data and redirects).
 
 ## Release 5A: deals and coupons (done, not yet run against Neon)
 - Database script `khushio-sql-phase-5a.sql`: four NEW tables (`deals`, `coupons`, `deal_products`, `deal_categories`). Safe to run before the code. Read the status row: tables 4, indexes 9, foreign keys 8. The database then has 34 tables.
@@ -170,3 +170,24 @@ This time the environment **had the npm registry**: `npm ci` and the Tiptap inst
 - Try the publishing rules: Published with no text is refused; Scheduled with a past time is refused. Archive an article: its address now shows 404; then delete it.
 - `/admin/media`: the cover and inline pictures show "1 use" and refuse deletion until removed from the article.
 - Create a page "About" and publish it: `/p/about` works and is in the sitemap.
+
+## Release 6B: guides, product embeds and the homepage builder (done, NOT run: no npm registry in the build environment)
+- Database script `khushio-sql-phase-6b.sql`: ONE column and ONE index on `articles` (`type`, default `article`; index on type, status, publish_at). No new table: the database stays at 41 tables. Safe to run before the code. Status row: `type_column` 1, `type_index` 1, `unknown_types` 0. **No new permission and no new environment variable** (`homepage:write` already existed and the editor role holds it; the signed preview uses the existing `AUTH_SECRET`), so nobody needs to sign in again.
+- **Guides:** one table, one editor. The article form has a Type (article, buying guide, review, comparison, how-to). Every type keeps its address under `/articles/<slug>`. `/guides` lists the four guide kinds, `/guides/<type>` one kind (`guide`, `review`, `comparison`, `how-to`; anything else is 404), with chips for the kinds that have visible items. `/articles` still lists everything. The sitemap has `/guides` and the kinds with visible items. The admin list filters by type.
+- **Product embed:** a "Product" button in the editor (articles only) opens a picker (search by name, any status except archived). The text stores only the product id (`productEmbed` node, at most 20 per document, top level only). The page looks all embedded products up in ONE cached query (tag `products`): live price range, picture, first active store link. A product that is archived, a draft or not yet live is simply left out, so there is never a broken card. The store button goes through `/go` with `sponsored nofollow noopener`.
+- **Homepage builder** (`/admin/homepage`, permission `homepage:write`): add, edit, delete, switch on or off, move up or down, schedule (India time) and preview sections of seven types: hero banner, featured categories, trending products (featured, newest or most clicked in 30 days), deals, collections, guides, promo banner. Each type is drawn by one registered component (`src/shared/homepage/sections.tsx`); the database holds a type and a small JSON config that is validated per type with Zod when saved AND when the page is built (a bad or hand-edited row is skipped, an unknown type is ignored). Links in banners must be a path on this site or https. The hero picture comes from the media library and counts as a media use. "Create the starter layout" fills an empty homepage. An empty homepage shows the brand banner only.
+- **Preview:** `/preview/home?token=...` shows every section with a label (live, scheduled, switched off, nothing to show). It needs BOTH a valid signed link (HMAC with `AUTH_SECRET`, good for one hour, made by the Open preview button) AND a signed-in person with `homepage:write`; anyone else gets 404. Never cached, never indexed.
+- **Cache:** the homepage revalidates every 10 minutes; every homepage or navigation write clears its tag and the home page at once; "Refresh the homepage" does the same by hand. A section's go-live time is checked with the clock when the page is built, so a scheduled section appears within the 10-minute window with no job. A failing section is logged and skipped.
+- **Navigation editor** (`/admin/navigation`, also `homepage:write`): header menu (up to 8 links) and footer links (up to 20) in `navigation_items`; add, edit, show or hide, move, delete. Empty header = the built-in menu. The header and footer read them (cached 10 minutes, tag `navigation`, cleared on every write).
+- Not in 6B on purpose: structured data (JSON-LD, reviews) and redirects (7A), drag and drop (Up and Down buttons instead), author pages, related articles.
+- Tests written: `tests/unit/content-embed.test.ts`, `homepage-config.test.ts`, `homepage-preview.test.ts`, 6B cases in `sql-scripts.test.ts`, `tests/integration/homepage.test.ts` and `guides-embeds.test.ts` (embedded Postgres). **None of them has been run yet**; the build environment had no npm registry, so there was no `npm ci`, typecheck, lint, test run or build.
+
+## Smoke checklist for 6B (preview, then production)
+- Run `khushio-sql-phase-6b.sql`; read the status row (1 / 1 / 0). Existing articles are now type Article.
+- Edit an article, set Type to Buying guide, Save: it appears on `/guides` and `/guides/guide`, and still at `/articles/<slug>`.
+- In the editor click Product, search, choose a live product: a dashed block shows its name. Save and open the article: card with price, picture and store button. Archive that product in admin: after saving it (product writes clear the cache) the card is gone and the page still works.
+- `/admin/homepage`: Create the starter layout. Open preview in a new tab: sections labelled Live. Switch a section off: preview says Switched off, `/` does not show it. Schedule one for five minutes ahead: hidden now, appears within about 10 minutes after the time.
+- Move a section down and reload: the order stays. Add a promo banner with a link `javascript:alert(1)`: refused. Choose a hero picture: `/admin/media` shows "1 use" and refuses deletion.
+- Open the preview link while signed out (private window): 404. Wait an hour or edit the token: 404 or "expired".
+- `/admin/navigation`: add a header link, move it, hide it; the site header changes at once. Hide all of them: the built-in menu returns.
+- Compare the homepage with the banner design.

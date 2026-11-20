@@ -49,13 +49,15 @@ export async function deleteMediaRow(id: string): Promise<void> {
 }
 
 /**
- * How many articles and pages use a file: as an article's cover, or as an image inside the article or page text.
+ * How many articles, pages and homepage sections use a file: as an article's cover, as an image inside the article or page text,
+ * or as the picture of a homepage hero banner (Release 6B).
  * The text is a JSON document, and Postgres writes a jsonb text as  "publicId": "<id>"  (colon, one space), so a plain
  * substring test finds every image node. The tables are small; a count per media row on one admin page is cheap.
  */
 const contentUses = (publicId: SQL | string) => sql<number>`(
   (select count(*)::int from articles a where a.cover_public_id = ${publicId} or position('"publicId": ' || to_json(${publicId}::text)::text in a.content::text) > 0)
   + (select count(*)::int from pages p where position('"publicId": ' || to_json(${publicId}::text)::text in p.content::text) > 0)
+  + (select count(*)::int from homepage_sections h where position('"imagePublicId": ' || to_json(${publicId}::text)::text in h.config::text) > 0)
 )`;
 
 /** Uses images_public_id_idx for products; articles and pages are read by content (see contentUses). */

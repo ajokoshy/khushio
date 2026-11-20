@@ -35,7 +35,9 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 | reports | nightly roll-up and purge, retention setting, click and conversion reports, IST day helpers, cron authorisation (`rollup`, `rollup-repository`, `report-repository`, `report-service`, `days`, `settings`, `cron-auth`) | 4B |
 | conversions | conversion list, manual entry, CSV import with reconcile-on-(network, order id) (`csv`, `rows`, `repository`, `service`, `validation`, `types`) | 4B |
 | deals | folder only | 5A |
-| content | folder only | 6A |
+| content | articles, guides, pages, authors, topics, tags; the JSON document whitelist with product embeds (`document`, `rules`, `visibility`, `validation`, `repository`, `service`, `public`, `seo`, `types`) | 6A, 6B |
+| homepage | the homepage builder: per-type Zod section configs, safe link targets, signed preview links, resolvers that read each section's data from the module that owns it (`config`, `links`, `preview`, `validation`, `repository`, `service`, `types`) | 6B |
+| navigation | header and footer links from `navigation_items`, with the built-in menu as fallback (`repository`, `service`, `validation`, `types`) | 6B |
 | seo | folder only | 7A |
 | tools, studio, business, compare | folder only, behind feature flags | 8 and later |
 

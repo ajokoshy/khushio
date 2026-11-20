@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ProductImage } from "@/shared/catalog/product-image";
-import type { PublicArticleSummary } from "@/modules/content/types";
+import { ARTICLE_TYPE_LABELS, type PublicArticleSummary } from "@/modules/content/types";
 
 export const formatArticleDate = (date: Date | null): string | null => (date ? date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : null);
 
@@ -12,7 +12,7 @@ function Card({ a, priority }: { a: PublicArticleSummary; priority: boolean }) {
         <ProductImage publicId={a.coverPublicId} alt="" profiles={["card", "product"]} fallback="card" sizes="(min-width: 1024px) 384px, (min-width: 640px) 50vw, 100vw" width={480} height={320} priority={priority} className="aspect-[3/2] w-full object-cover" />
       </Link>
       <div className="flex flex-1 flex-col p-4">
-        {a.categoryName && <p className="text-xs font-medium uppercase tracking-wide text-forest-800">{a.categoryName}</p>}
+        {(a.type !== "article" || a.categoryName) && <p className="text-xs font-medium uppercase tracking-wide text-forest-800">{[a.type !== "article" ? ARTICLE_TYPE_LABELS[a.type] : null, a.categoryName].filter(Boolean).join(" · ")}</p>}
         <h2 className="mt-1 text-xl"><Link href={`/articles/${a.slug}`} className="hover:underline">{a.title}</Link></h2>
         {a.excerpt && <p className="mt-2 text-ink-600">{a.excerpt}</p>}
         <p className="mt-auto pt-3 text-xs text-ink-600">{[a.authorName, date].filter(Boolean).join(" · ")}</p>
@@ -30,11 +30,11 @@ export function ArticleGrid({ articles }: { articles: PublicArticleSummary[] }) 
 }
 
 /** Previous and next links for a listing. Page 1 has no ?page= so there is one address per list. */
-export function ListPager({ basePath, page, hasNext }: { basePath: string; page: number; hasNext: boolean }) {
+export function ListPager({ basePath, page, hasNext, label = "More articles" }: { basePath: string; page: number; hasNext: boolean; label?: string }) {
   if (page <= 1 && !hasNext) return null;
   const href = (p: number) => (p <= 1 ? basePath : `${basePath}?page=${p}`);
   return (
-    <nav aria-label="More articles" className="mt-8 flex items-center justify-between text-sm">
+    <nav aria-label={label} className="mt-8 flex items-center justify-between text-sm">
       {page > 1 ? <Link href={href(page - 1)} rel="prev" className="font-medium text-coral-600 underline">← Newer</Link> : <span />}
       {hasNext && <Link href={href(page + 1)} rel="next" className="font-medium text-coral-600 underline">Older →</Link>}
     </nav>

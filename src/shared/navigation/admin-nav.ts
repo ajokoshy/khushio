@@ -1,6 +1,6 @@
 import { hasPermission, PERMISSIONS as P, type PermissionKey } from "@/core/permissions";
 
-export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media" | "links" | "networks" | "programs" | "reports" | "conversions" | "deals" | "coupons" | "import" | "articles" | "pages" | "authors" | "topics";
+export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media" | "links" | "networks" | "programs" | "reports" | "conversions" | "deals" | "coupons" | "import" | "articles" | "pages" | "authors" | "topics" | "homepage" | "navigation";
 
 export type AdminNavItem = {
   label: string;
@@ -26,10 +26,12 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: "Programmes", href: "/admin/programs", icon: "programs", permission: P.affiliateRead },
   { label: "Deals", href: "/admin/deals", icon: "deals", permission: P.dealWrite },
   { label: "Coupons", href: "/admin/coupons", icon: "coupons", permission: P.dealWrite },
-  { label: "Articles", href: "/admin/articles", icon: "articles", permission: P.contentWrite },
+  { label: "Articles and guides", href: "/admin/articles", icon: "articles", permission: P.contentWrite },
   { label: "Pages", href: "/admin/pages", icon: "pages", permission: P.contentWrite },
   { label: "Authors", href: "/admin/authors", icon: "authors", permission: P.contentWrite },
   { label: "Topics and tags", href: "/admin/topics", icon: "topics", permission: P.contentWrite },
+  { label: "Homepage", href: "/admin/homepage", icon: "homepage", permission: P.homepageWrite },
+  { label: "Navigation", href: "/admin/navigation", icon: "navigation", permission: P.homepageWrite },
   { label: "Reports", href: "/admin/reports", icon: "reports", permission: P.reportView },
   { label: "Conversions", href: "/admin/conversions", icon: "conversions", permission: P.reportView },
   { label: "Import and export", href: "/admin/import", icon: "import", permission: P.importRun },

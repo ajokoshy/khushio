@@ -5,15 +5,16 @@ import { articles, articleTags, authorProfiles, contentCategories, contentTags, 
 import { escapeLike } from "@/core/validation/like";
 import { sanitizeDocument } from "./document";
 import type {
-  ArticleListRow, ArticleRow, ArticleWrite, AuthorRow, CategoryRow, ContentFilter, ContentStatus, PageListRow, PageRow, PageWrite,
-  PublicArticle, PublicArticleSummary, PublicPage, SeoFields, TagRow,
+  ArticleListRow, ArticleRow, ArticleType, ArticleWrite, AuthorRow, CategoryRow, ContentFilter, ContentStatus, PageListRow, PageRow, PageWrite,
+  PublicArticle, PublicArticleSummary, PublicPage, SeoFields, TagRow, TypeFilter,
 } from "./types";
-import { hasAnySeo } from "./types";
+import { ARTICLE_TYPES, hasAnySeo } from "./types";
 import { visibleArticleCondition, visiblePageCondition } from "./visibility";
 
 /** Repository: the only code in this module that talks to the database. */
 
 const status = (v: string) => v as ContentStatus;
+const kind = (v: string) => v as ArticleType;
 const slugsLike = (column: typeof articles.slug | typeof pages.slug | typeof authorProfiles.slug | typeof contentCategories.slug | typeof contentTags.slug, base: string) =>
   or(eq(column, base), like(column, `${escapeLike(base)}-%`));
 
@@ -45,6 +46,7 @@ const articleListColumns = {
   id: articles.id,
   slug: articles.slug,
   title: articles.title,
+  type: articles.type,
   status: articles.status,
   publishAt: articles.publishAt,
   updatedAt: articles.updatedAt,
@@ -60,15 +62,16 @@ function articleListQuery() {
     .leftJoin(contentCategories, eq(contentCategories.id, articles.categoryId));
 }
 
-export async function selectArticles(opts: { q?: string; status: ContentFilter; limit: number; offset: number }): Promise<ArticleListRow[]> {
+export async function selectArticles(opts: { q?: string; status: ContentFilter; type?: TypeFilter; limit: number; offset: number }): Promise<ArticleListRow[]> {
   const conditions: (SQL | undefined)[] = [];
   if (opts.status !== "all") conditions.push(eq(articles.status, opts.status));
+  if (opts.type && opts.type !== "all") conditions.push(eq(articles.type, opts.type));
   if (opts.q) {
     const pattern = `%${escapeLike(opts.q)}%`;
     conditions.push(or(ilike(articles.title, pattern), ilike(articles.slug, pattern)));
   }
   const rows = await articleListQuery().where(and(...conditions)).orderBy(desc(articles.updatedAt), asc(articles.id)).limit(opts.limit).offset(opts.offset);
-  return rows.map((r) => ({ ...r, status: status(r.status) }));
+  return rows.map((r) => ({ ...r, type: kind(r.type), status: status(r.status) }));
 }
 
 export async function selectArticleById(id: string): Promise<ArticleRow | null> {
@@ -79,7 +82,7 @@ export async function selectArticleById(id: string): Promise<ArticleRow | null> 
     .leftJoin(contentCategories, eq(contentCategories.id, articles.categoryId))
     .where(eq(articles.id, id))
     .limit(1);
-  return row ? { ...row, status: status(row.status), content: sanitizeDocument(row.content) } : null;
+  return row ? { ...row, type: kind(row.type), status: status(row.status), content: sanitizeDocument(row.content) } : null;
 }
 
 export async function selectArticleTagNames(articleId: string): Promise<string[]> {
@@ -251,6 +254,7 @@ export const selectCategoryOptions = () => db().select({ id: contentCategories.i
 const summaryColumns = {
   slug: articles.slug,
   title: articles.title,
+  type: articles.type,
   excerpt: articles.excerpt,
   publishAt: articles.publishAt,
   coverPublicId: articles.coverPublicId,
@@ -262,11 +266,12 @@ const summaryColumns = {
 };
 
 /** Newest first, only what visitors may see (database clock). Reads limit+1 so the caller knows whether a next page exists. */
-export async function selectVisibleArticles(opts: { categoryId?: string; tagId?: string; limit: number; offset: number }): Promise<PublicArticleSummary[]> {
+export async function selectVisibleArticles(opts: { categoryId?: string; tagId?: string; types?: readonly ArticleType[]; limit: number; offset: number }): Promise<PublicArticleSummary[]> {
   const conditions: (SQL | undefined)[] = [visibleArticleCondition()];
   if (opts.categoryId) conditions.push(eq(articles.categoryId, opts.categoryId));
+  if (opts.types && opts.types.length > 0) conditions.push(inArray(articles.type, [...opts.types]));
   if (opts.tagId) conditions.push(sql`exists (select 1 from article_tags at where at.article_id = ${articles.id} and at.tag_id = ${opts.tagId})`);
-  return db()
+  const rows = await db()
     .select(summaryColumns)
     .from(articles)
     .leftJoin(authorProfiles, eq(authorProfiles.id, articles.authorId))
@@ -275,6 +280,14 @@ export async function selectVisibleArticles(opts: { categoryId?: string; tagId?:
     .orderBy(desc(articles.publishAt), asc(articles.id))
     .limit(opts.limit)
     .offset(opts.offset);
+  return rows.map((r) => ({ ...r, type: kind(r.type) }));
+}
+
+/** The guide types (everything but the plain article) that have at least one visible item, in the order of ARTICLE_TYPES. Uses articles_type_status_publish_idx. */
+export async function selectVisibleGuideTypes(): Promise<ArticleType[]> {
+  const rows = await db().selectDistinct({ type: articles.type }).from(articles).where(and(visibleArticleCondition(), sql`${articles.type} <> 'article'`));
+  const present = new Set(rows.map((r) => r.type));
+  return ARTICLE_TYPES.filter((t) => t !== "article" && present.has(t));
 }
 
 /**
@@ -294,7 +307,7 @@ export async function selectArticleForReader(slug: string): Promise<PublicArticl
     db().select({ slug: contentTags.slug, name: contentTags.name }).from(articleTags).innerJoin(contentTags, eq(contentTags.id, articleTags.tagId)).where(eq(articleTags.articleId, row.id)).orderBy(asc(contentTags.name)),
     selectSeo("article", row.id),
   ]);
-  return { ...row, status: status(row.status), content: sanitizeDocument(row.content), tags, seo: seo ?? { title: null, description: null, canonical: null, ogImage: null, robots: null } };
+  return { ...row, type: kind(row.type), status: status(row.status), content: sanitizeDocument(row.content), tags, seo: seo ?? { title: null, description: null, canonical: null, ogImage: null, robots: null } };
 }
 
 export async function selectPageForReader(slug: string): Promise<PublicPage | null> {
@@ -330,11 +343,12 @@ export async function selectTagBySlug(slug: string): Promise<{ id: string; slug:
 /** Items the editor kept out of search results do not belong in the sitemap either. */
 const notNoindex = (type: SeoEntity, id: typeof articles.id | typeof pages.id) => sql`not exists (select 1 from ${seoMetadata} where ${seoMetadata.entityType} = ${type} and ${seoMetadata.entityId} = ${id} and ${seoMetadata.robots} is not null)`;
 
-export async function selectSitemapContent(limit: number): Promise<{ articles: { slug: string; updatedAt: Date }[]; pages: { slug: string; updatedAt: Date }[]; topics: { slug: string }[] }> {
-  const [a, p, t] = await Promise.all([
+export async function selectSitemapContent(limit: number): Promise<{ articles: { slug: string; updatedAt: Date }[]; pages: { slug: string; updatedAt: Date }[]; topics: { slug: string }[]; guideTypes: ArticleType[] }> {
+  const [a, p, t, g] = await Promise.all([
     db().select({ slug: articles.slug, updatedAt: articles.updatedAt }).from(articles).where(and(visibleArticleCondition(), notNoindex("article", articles.id))).orderBy(desc(articles.publishAt)).limit(limit),
     db().select({ slug: pages.slug, updatedAt: pages.updatedAt }).from(pages).where(and(visiblePageCondition(), notNoindex("page", pages.id))).limit(limit),
     selectPublicTopics(),
+    selectVisibleGuideTypes(),
   ]);
-  return { articles: a, pages: p, topics: t.map((x) => ({ slug: x.slug })) };
+  return { articles: a, pages: p, topics: t.map((x) => ({ slug: x.slug })), guideTypes: g };
 }

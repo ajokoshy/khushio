@@ -323,3 +323,13 @@ export async function moveProductImage(productId: string, imageId: string, direc
 export async function findProductIdsBySlugs(slugs: readonly string[]): Promise<Map<string, string>> {
   return new Map((await repo.selectProductIdsBySlugs(slugs)).map((p) => [p.slug, p.id] as const));
 }
+
+/** Products an editor can embed in an article (Release 6B). Any status except archived and discontinued: an embed of a draft stays hidden until it goes live. */
+export async function searchProductsForEmbed(q: string | undefined) {
+  return (await repo.selectProductPickerRows(q?.trim() || undefined, 20)).map((p) => ({ id: p.id, name: p.name, brandName: p.brandName, status: p.status }));
+}
+
+/** Product id -> name for the products an article embeds, shown inside the editor. */
+export async function getProductNames(ids: readonly string[]): Promise<Record<string, string>> {
+  return Object.fromEntries((await repo.selectProductNames(ids)).map((p) => [p.id, p.name]));
+}

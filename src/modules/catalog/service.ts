@@ -3,7 +3,7 @@ import { CACHE_TAGS, CACHE_TTL } from "@/core/config/cache";
 import * as discover from "@/modules/discover/service";
 import { decodeCursor } from "./cursor";
 import * as repo from "./repository";
-import type { CatalogCard, CatalogFilters, CatalogPage, ProductDetailPublic } from "./types";
+import type { CatalogCard, CatalogFilters, CatalogPage, CollectionTile, EmbedProduct, ProductDetailPublic, TrendingMode } from "./types";
 
 /**
  * The public catalogue. Every function returns only products a visitor may see (see core/catalog/visibility.ts).
@@ -96,6 +96,38 @@ const cachedCollection = unstable_cache(
 export async function getCollectionPage(slug: string) {
   return cachedCollection(slug);
 }
+
+const cachedEmbeds = unstable_cache((ids: string[]) => repo.selectEmbedProducts(ids), ["catalog-embeds"], { revalidate: CACHE_TTL.products, tags: [CACHE_TAGS.products] });
+
+/** At most this many embedded products are looked up for one page (the editor allows 20; this is the safety stop). */
+const MAX_EMBED_LOOKUP = 40;
+
+/**
+ * Live data for the products embedded in an article (Release 6B), by id. One cached query for the whole list, cleared by every
+ * product write (tag `products`), so a price change, an archive or a new store link shows at once. A product a visitor may not
+ * see (draft, archived, not yet live) is not in the map: the page leaves that embed out.
+ */
+export async function getEmbedProducts(ids: readonly string[]): Promise<Map<string, EmbedProduct>> {
+  const unique = [...new Set(ids)].sort().slice(0, MAX_EMBED_LOOKUP);
+  if (unique.length === 0) return new Map();
+  return new Map((await cachedEmbeds(unique)).map((p) => [p.id, p]));
+}
+
+const cachedTrending = unstable_cache((mode: TrendingMode, limit: number) => repo.selectTrendingCards(mode, limit), ["catalog-trending"], { revalidate: CACHE_TTL.products, tags: [CACHE_TAGS.products] });
+const cachedTiles = unstable_cache((ids: string[]) => repo.selectCollectionTiles(ids), ["catalog-collection-tiles"], { revalidate: CACHE_TTL.products, tags: [CACHE_TAGS.products] });
+
+/** The homepage "trending products" section (Release 6B). Cached 30 minutes under the tag `products`; one query when rebuilt. */
+export async function getTrendingProducts(mode: TrendingMode, limit: number): Promise<CatalogCard[]> {
+  return cachedTrending(mode, limit);
+}
+
+/** The homepage "collections" section: the chosen collections that are still active, in the chosen order. */
+export async function getCollectionTiles(ids: readonly string[]): Promise<CollectionTile[]> {
+  return ids.length === 0 ? [] : cachedTiles([...ids]);
+}
+
+/** Active collections for the homepage section form. Not cached: only the admin reads it. */
+export const listCollectionOptions = () => repo.selectCollectionOptions();
 
 /** Featured and newest product slugs, to build ahead of time. Never throws: a build without a database just builds none. */
 export async function listTopProductSlugs(limit = 50): Promise<string[]> {

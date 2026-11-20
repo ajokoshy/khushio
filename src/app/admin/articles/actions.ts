@@ -8,6 +8,8 @@ import type { UploadResult } from "@/infrastructure/cloudinary/upload-rules";
 import * as service from "@/modules/content/service";
 import { articleInputSchema, idSchema, pickerQuerySchema, uploadResultSchema } from "@/modules/content/validation";
 import { addToLibrary, listMedia } from "@/modules/media/service";
+import { searchProductsForEmbed } from "@/modules/products/service";
+import type { ProductPickerItem } from "@/shared/admin/content/product-picker";
 import { invalidForm, runAction, runDataAction, runFormAction, type DataResult, type Failure } from "@/shared/admin/action-helpers";
 import type { ActionResult, FormState } from "@/shared/admin/form-state";
 import type { PickerImage } from "@/shared/admin/content/image-picker";
@@ -74,5 +76,13 @@ export async function addEditorImageAction(upload: unknown, alt: string): Promis
     if (!parsed.success) throw new Error("The upload result was not understood.");
     const asset = await addToLibrary(parsed.data satisfies UploadResult, alt.trim().slice(0, 200) || null, session.user.id, { apiSecret: apiSecret(), removeFromCloudinary: destroyAsset });
     return toPicker(asset);
+  });
+}
+
+/** Release 6B: the editor's product picker. Offers products by name, any status except archived; the article keeps only the id. */
+export async function searchEditorProductsAction(query: string): Promise<DataResult<ProductPickerItem[]>> {
+  return runDataAction(async () => {
+    await requirePermission(P.contentWrite);
+    return searchProductsForEmbed(pickerQuerySchema.parse(query));
   });
 }

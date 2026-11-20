@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { CoverField } from "@/shared/admin/content/cover-field";
 import type { PickerActions } from "@/shared/admin/content/image-picker";
+import type { ProductSearch } from "@/shared/admin/content/product-picker";
 import { RichTextEditor } from "@/shared/admin/content/rich-text-editor";
 import { SeoFields } from "@/shared/admin/content/seo-fields";
 import { FormField, inputClass } from "@/shared/admin/form-field";
@@ -11,7 +12,7 @@ import type { FormState } from "@/shared/admin/form-state";
 import { SubmitButton } from "@/shared/admin/submit-button";
 
 export type ArticleFormInitial = {
-  title: string; slug: string; excerpt: string; status: string; publishAt: string; authorId: string; categoryId: string; tags: string;
+  title: string; type: string; slug: string; excerpt: string; status: string; publishAt: string; authorId: string; categoryId: string; tags: string;
   coverPublicId: string; coverAlt: string; content: unknown;
   seoTitle: string; seoDescription: string; seoCanonical: string; seoOgImage: string; seoRobots: string;
 };
@@ -22,6 +23,9 @@ type Props = PickerActions & {
   action: (prev: FormState, formData: FormData) => Promise<NonNullable<FormState>>;
   initial: ArticleFormInitial;
   statuses: readonly { value: string; label: string; publishControlled: boolean }[];
+  types: readonly { value: string; label: string }[];
+  searchProducts: ProductSearch;
+  productLabels: Record<string, string>;
   authors: { id: string; name: string }[];
   categories: { id: string; name: string; isActive: boolean }[];
   canPublish: boolean;
@@ -31,7 +35,7 @@ type Props = PickerActions & {
   cancelHref: string;
 };
 
-export function ArticleForm({ mode, action, initial, statuses, authors, categories, canPublish, canEditSeo, cloudName, uploadsEnabled, cancelHref, search, sign, record }: Props) {
+export function ArticleForm({ mode, action, initial, statuses, types, searchProducts, productLabels, authors, categories, canPublish, canEditSeo, cloudName, uploadsEnabled, cancelHref, search, sign, record }: Props) {
   const [state, formAction] = useActionState<FormState, FormData>(action, null);
   const text = (name: TextKey) => state?.values?.[name] ?? initial[name];
   const error = (name: string) => state?.fieldErrors?.[name];
@@ -52,6 +56,12 @@ export function ArticleForm({ mode, action, initial, statuses, authors, categori
         <input id="title" name="title" required maxLength={120} className={inputClass} defaultValue={text("title")} aria-invalid={!!error("title")} aria-describedby={by("title")} />
       </FormField>
 
+      <FormField label="Type" htmlFor="type" required error={error("type")} hint="Guides, reviews, comparisons and how-tos also appear under /guides. Every type keeps its address under /articles.">
+        <select id="type" name="type" required className={inputClass} defaultValue={text("type")} aria-describedby={by("type")}>
+          {types.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+      </FormField>
+
       <FormField label="Summary" htmlFor="excerpt" error={error("excerpt")} hint="Optional. One or two sentences shown in lists and used by search engines. Up to 300 characters.">
         <textarea id="excerpt" name="excerpt" rows={2} maxLength={300} className={inputClass} defaultValue={text("excerpt")} aria-invalid={!!error("excerpt")} aria-describedby={by("excerpt")} />
       </FormField>
@@ -59,7 +69,7 @@ export function ArticleForm({ mode, action, initial, statuses, authors, categori
       <div>
         <p className="mb-1 text-sm font-medium">Text</p>
         {error("content") && <p id="content-error" role="alert" className="mb-1 text-sm text-coral-600">{error("content")}</p>}
-        <RichTextEditor name="content" initial={content} cloudName={cloudName} uploadsEnabled={uploadsEnabled} invalid={!!error("content")} describedBy={error("content") ? "content-error" : undefined} search={search} sign={sign} record={record} />
+        <RichTextEditor name="content" initial={content} cloudName={cloudName} uploadsEnabled={uploadsEnabled} invalid={!!error("content")} describedBy={error("content") ? "content-error" : undefined} search={search} sign={sign} record={record} searchProducts={searchProducts} productLabels={productLabels} />
       </div>
 
       <CoverField initialPublicId={text("coverPublicId")} initialAlt={text("coverAlt")} cloudName={cloudName} uploadsEnabled={uploadsEnabled} error={error("coverPublicId")} search={search} sign={sign} record={record} />
@@ -108,7 +118,7 @@ export function ArticleForm({ mode, action, initial, statuses, authors, categori
         value={{ seoTitle: text("seoTitle"), seoDescription: text("seoDescription"), seoCanonical: text("seoCanonical"), seoOgImage: text("seoOgImage"), seoRobots: text("seoRobots") }} />
 
       <div className="flex items-center gap-4 pt-2">
-        <SubmitButton>{mode === "create" ? "Create article" : "Save changes"}</SubmitButton>
+        <SubmitButton>{mode === "create" ? "Create" : "Save changes"}</SubmitButton>
         <Link href={cancelHref} className="text-sm text-ink-600 underline">Cancel</Link>
       </div>
     </form>

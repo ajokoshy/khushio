@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { BarChart3, FileText, Files, PenLine, Tags, FolderTree, Handshake, Image as ImageIcon, FileSpreadsheet, TicketPercent, Percent, LayoutDashboard, Link2, Menu, Network, Package, Receipt, ScrollText, Store, Tag, X, type LucideIcon } from "lucide-react";
+import { BarChart3, FileText, Files, PenLine, Tags, FolderTree, Handshake, Image as ImageIcon, FileSpreadsheet, TicketPercent, Percent, LayoutDashboard, Link2, Menu, Network, Package, Receipt, ScrollText, Store, Tag, X, House, Compass, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { AdminNavIcon } from "@/shared/navigation/admin-nav";
 import { cn } from "@/shared/ui/cn";
@@ -27,6 +27,8 @@ const ICONS: Record<AdminNavIcon, LucideIcon> = {
   pages: Files,
   authors: PenLine,
   topics: Tags,
+  homepage: House,
+  navigation: Compass,
 };
 
 type Item = { label: string; href: string; icon: AdminNavIcon };

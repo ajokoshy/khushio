@@ -3,7 +3,7 @@ import { parseAdminDateTime } from "@/core/validation/datetime";
 import { checkbox, intField, nameField, optionalSlugField, optionalText, optionalUrl, optionalUuid } from "@/core/validation/fields";
 import { slugify } from "@/core/validation/slug";
 import { isPublicId, parseDocumentJson } from "./document";
-import { CONTENT_STATUSES, ROBOTS_VALUES, type ContentFilter, type RobotsValue } from "./types";
+import { ARTICLE_TYPES, CONTENT_STATUSES, ROBOTS_VALUES, type ContentFilter, type RobotsValue, type TypeFilter } from "./types";
 
 export { idSchema } from "@/core/validation/fields";
 
@@ -92,8 +92,12 @@ const tagsField = z
     return parsed.value;
   });
 
+/** Release 6B. A form that does not send a type (an old bookmark, a script) means a plain article. */
+const articleTypeField = z.enum(ARTICLE_TYPES, { errorMap: () => ({ message: "Choose a type" }) }).default("article");
+
 export const articleInputSchema = z.object({
   title: nameField("title"),
+  type: articleTypeField,
   slug: optionalSlugField,
   excerpt: optionalText(300),
   status: statusField,
@@ -142,6 +146,10 @@ export type TagInput = z.output<typeof tagInputSchema>;
 /** The article and page lists filter by status through ?status=. */
 export const CONTENT_FILTER_OPTIONS: readonly ContentFilter[] = ["all", ...CONTENT_STATUSES];
 export const contentFilterSchema = z.enum(["all", ...CONTENT_STATUSES]).catch("all");
+
+/** The article list filters by type through ?type=. */
+export const TYPE_FILTER_OPTIONS: readonly TypeFilter[] = ["all", ...ARTICLE_TYPES];
+export const typeFilterSchema = z.enum(["all", ...ARTICLE_TYPES]).catch("all");
 
 /** Image-picker request: a search text only. */
 export const pickerQuerySchema = z.string().trim().max(100).optional();

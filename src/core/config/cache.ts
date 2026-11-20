@@ -5,6 +5,8 @@ export const CACHE_TTL = {
   merchants: 60 * 60 * 24,
   products: 60 * 30,
   homepage: 60 * 10,
+  /** Release 6B: the header and footer links. Every navigation write clears the tag `navigation` at once. */
+  navigation: 60 * 10,
   /** Articles and pages: short, because scheduled articles go live by the clock, not by a job (modules/content/public.ts). */
   articles: 60 * 5,
   /** Also the /deals page's revalidate (src/app/(public)/deals/page.tsx). Keep it below START_LOOKAHEAD_MS in modules/deals/window.ts. */
@@ -20,6 +22,7 @@ export const CACHE_TAGS = {
   merchants: "merchants",
   deals: "deals",
   homepage: "homepage",
+  navigation: "navigation",
   articles: "articles",
   settings: "settings",
   dashboard: "dashboard",

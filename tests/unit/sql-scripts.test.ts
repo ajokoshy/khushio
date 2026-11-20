@@ -349,3 +349,30 @@ describe("khushio-sql-phase-6a.sql (articles, pages and the editor)", () => {
     expect((await db.query<{ author_id: string | null }>("SELECT author_id FROM articles WHERE slug = 'first-article'")).rows[0]?.author_id).toBeNull();
   });
 });
+
+describe("khushio-sql-phase-6b.sql (guides, product embeds and the homepage builder)", () => {
+  it("adds the NOT NULL type column with the default 'article' and its index, and reports them in its status row", async () => {
+    const results = await db.exec(read("khushio-sql-phase-6b.sql"));
+    const row = results.at(-1)?.rows[0] as Record<string, unknown>;
+    expect(Number(row.type_column)).toBe(1);
+    expect(Number(row.type_index)).toBe(1);
+    expect(Number(row.unknown_types)).toBe(0);
+    expect(row.status).toBe("khushio-sql-phase-6b applied");
+    const col = (await db.query<{ is_nullable: string; column_default: string | null }>("SELECT is_nullable, column_default FROM information_schema.columns WHERE table_name = 'articles' AND column_name = 'type'")).rows[0];
+    expect(col?.is_nullable).toBe("NO");
+    expect(col?.column_default).toContain("'article'");
+  });
+
+  it("turns the articles that already exist into plain articles and is safe to run again", async () => {
+    await db.exec("INSERT INTO articles (slug, title) VALUES ('before-6b', 'Before 6B')");
+    await db.exec(read("khushio-sql-phase-6b.sql"));
+    const row = (await db.query<{ type: string }>("SELECT type FROM articles WHERE slug = 'before-6b'")).rows[0];
+    expect(row?.type).toBe("article");
+    expect(Number((await db.query<{ n: number }>("SELECT count(*) AS n FROM articles WHERE slug = 'before-6b'")).rows[0]?.n)).toBe(1);
+  });
+
+  it("adds no table: the homepage builder and navigation use the tables firstload created", async () => {
+    const { rows } = await db.query<{ n: number }>("SELECT count(*) AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('homepage_sections', 'navigation_items')");
+    expect(Number(rows[0]?.n)).toBe(2);
+  });
+});

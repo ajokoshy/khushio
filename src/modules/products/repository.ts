@@ -225,3 +225,25 @@ export async function selectProductIdsBySlugs(slugs: readonly string[]): Promise
   if (slugs.length === 0) return [];
   return db().select({ id: products.id, slug: products.slug }).from(products).where(inArray(products.slug, [...slugs]));
 }
+
+/** The editor's product picker (Release 6B): products by name or slug, newest first. Archived and discontinued products are not offered. */
+export async function selectProductPickerRows(q: string | undefined, limit: number): Promise<{ id: string; name: string; slug: string; status: string; brandName: string | null }[]> {
+  const conditions: (SQL | undefined)[] = [sql`${products.status} not in ('ARCHIVED', 'DISCONTINUED')`];
+  if (q) {
+    const pattern = `%${escapeLike(q)}%`;
+    conditions.push(or(ilike(products.name, pattern), ilike(products.slug, pattern)));
+  }
+  return db()
+    .select({ id: products.id, name: products.name, slug: products.slug, status: products.status, brandName: brands.name })
+    .from(products)
+    .leftJoin(brands, eq(brands.id, products.brandId))
+    .where(and(...conditions))
+    .orderBy(desc(products.createdAt), asc(products.id))
+    .limit(limit);
+}
+
+/** Names for product ids, any status (the editor shows the name of what is embedded). */
+export async function selectProductNames(ids: readonly string[]): Promise<{ id: string; name: string }[]> {
+  if (ids.length === 0) return [];
+  return db().select({ id: products.id, name: products.name }).from(products).where(inArray(products.id, [...ids]));
+}

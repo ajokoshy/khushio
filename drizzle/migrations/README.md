@@ -19,6 +19,7 @@ fails if the result differs from the Drizzle schema, so the two cannot drift apa
 | 4 | `khushio-sql-phase-3a.sql` | Release 3A: `brands.is_active`, unique category name per parent | Once, before deploying 3A |
 | 5 | `khushio-sql-phase-3b.sql` | Release 3B: unique media hash, SKU uniqueness, one primary category per product, `product_variants.sort_order`, image indexes | Once, before deploying 3B |
 | 6 | `khushio-sql-phase-3c.sql` | Release 3C: `pg_trgm`, `products.search_vector` and the search, listing, price and store indexes | Once, before deploying 3C |
+| 7 to 16 | `khushio-sql-phase-4a.sql` to `khushio-sql-phase-6b.sql` | One file per release, see docs/DATABASE.md for what each adds (6B: `articles.type` and its index) | Once each, in release order, before deploying that release |
 | later | `khushio-sql-phase-<release>.sql` | The database changes of one release, for example `khushio-sql-phase-3a.sql` | Once per release, in release order, **before** deploying that release's code |
 
 `firstload` is never edited again after Release 2B. Each later release adds its **own** file (even a

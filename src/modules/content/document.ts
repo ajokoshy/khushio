@@ -5,9 +5,11 @@
  * and javascript: links. Here the stored document is rebuilt node by node from a short list of allowed nodes and
  * marks, and the page is drawn from that clean tree with React elements (never innerHTML). Anything else is dropped.
  *
- *   nodes  paragraph, heading (levels 2 to 4), bulletList, orderedList, listItem, blockquote, hardBreak, image, text
+ *   nodes  paragraph, heading (levels 2 to 4), bulletList, orderedList, listItem, blockquote, hardBreak, image, productEmbed, text
  *   marks  bold, italic, link (http, https, mailto or a path on this site)
  *   image  only a media-library public id, a description and optional size: the address is built from the id
+ *   productEmbed (Release 6B)  only a product id. Price, picture and link are read live when the page is drawn, and the embed
+ *          is left out when the product is not visible (archived, draft). At most DOCUMENT_LIMITS.maxEmbeds per document.
  *
  * sanitizeDocument() never throws and never trusts its input, so the same function guards what is saved and what
  * is rendered.
@@ -17,21 +19,25 @@ export type DocMark = { type: "bold" } | { type: "italic" } | { type: "link"; at
 export type TextNode = { type: "text"; text: string; marks?: DocMark[] };
 export type HardBreakNode = { type: "hardBreak" };
 export type ImageNode = { type: "image"; attrs: { publicId: string; alt: string; width?: number; height?: number } };
+export type ProductEmbedNode = { type: "productEmbed"; attrs: { productId: string } };
 export type InlineNode = TextNode | HardBreakNode;
 export type ParagraphNode = { type: "paragraph"; content: InlineNode[] };
 export type HeadingNode = { type: "heading"; attrs: { level: 2 | 3 | 4 }; content: InlineNode[] };
 export type ListItemNode = { type: "listItem"; content: BlockNode[] };
 export type ListNode = { type: "bulletList" | "orderedList"; content: ListItemNode[] };
 export type BlockquoteNode = { type: "blockquote"; content: BlockNode[] };
-export type BlockNode = ParagraphNode | HeadingNode | ListNode | BlockquoteNode | ImageNode;
+export type BlockNode = ParagraphNode | HeadingNode | ListNode | BlockquoteNode | ImageNode | ProductEmbedNode;
 export type Doc = { type: "doc"; content: BlockNode[] };
 
 export const emptyDocument = (): Doc => ({ type: "doc", content: [] });
 
-export const DOCUMENT_LIMITS = { maxDepth: 8, maxNodes: 20_000, maxText: 20_000, maxHref: 2048, maxAlt: 200, maxSide: 8000 } as const;
+export const DOCUMENT_LIMITS = { maxDepth: 8, maxNodes: 20_000, maxText: 20_000, maxHref: 2048, maxAlt: 200, maxSide: 8000, maxEmbeds: 20 } as const;
 
 const PUBLIC_ID = /^[A-Za-z0-9][A-Za-z0-9_\-/.]{0,254}$/;
 export const isPublicId = (value: string) => PUBLIC_ID.test(value) && !value.includes("..");
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const isProductId = (value: string) => UUID.test(value);
 
 type Raw = Record<string, unknown>;
 const isObject = (v: unknown): v is Raw => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -49,7 +55,7 @@ export function safeHref(value: unknown): string | null {
   return null;
 }
 
-type Budget = { nodes: number };
+type Budget = { nodes: number; embeds: number };
 
 function cleanMarks(value: unknown): DocMark[] | undefined {
   const out: DocMark[] = [];
@@ -125,12 +131,21 @@ function cleanBlocks(value: unknown, allowed: ReadonlySet<string>, depth: number
         out.push({ type: "image", attrs: { publicId, alt, ...(width && height ? { width, height } : {}) } });
         break;
       }
+      case "productEmbed": {
+        const a = isObject(raw.attrs) ? raw.attrs : {};
+        const productId = typeof a.productId === "string" ? a.productId.trim().toLowerCase() : "";
+        // Anything else the editor keeps on the node (the product name it shows while editing) is dropped here.
+        if (!isProductId(productId) || budget.embeds <= 0) break;
+        budget.embeds -= 1;
+        out.push({ type: "productEmbed", attrs: { productId } });
+        break;
+      }
     }
   }
   return out;
 }
 
-const IN_DOC: ReadonlySet<string> = new Set(["paragraph", "heading", "bulletList", "orderedList", "blockquote", "image"]);
+const IN_DOC: ReadonlySet<string> = new Set(["paragraph", "heading", "bulletList", "orderedList", "blockquote", "image", "productEmbed"]);
 const LIST_ONLY: ReadonlySet<string> = new Set(["listItem"]);
 const IN_ITEM: ReadonlySet<string> = new Set(["paragraph", "bulletList", "orderedList", "blockquote"]);
 const IN_QUOTE: ReadonlySet<string> = new Set(["paragraph", "bulletList", "orderedList", "blockquote"]);
@@ -138,7 +153,7 @@ const IN_QUOTE: ReadonlySet<string> = new Set(["paragraph", "bulletList", "order
 /** Rebuilds any value (parsed JSON, a database column, hostile input) into a clean document. Unknown nodes and marks are dropped. */
 export function sanitizeDocument(input: unknown): Doc {
   if (!isObject(input) || input.type !== "doc") return emptyDocument();
-  return { type: "doc", content: cleanBlocks(input.content, IN_DOC, 1, { nodes: DOCUMENT_LIMITS.maxNodes }) };
+  return { type: "doc", content: cleanBlocks(input.content, IN_DOC, 1, { nodes: DOCUMENT_LIMITS.maxNodes, embeds: DOCUMENT_LIMITS.maxEmbeds }) };
 }
 
 /* ---------------------------------- reading the document ---------------------------------- */
@@ -155,7 +170,8 @@ function blockText(block: BlockNode | ListItemNode, out: string[]): void {
     case "orderedList":
     case "blockquote":
     case "listItem": for (const child of block.content as BlockNode[]) blockText(child, out); break;
-    case "image": break;
+    case "image":
+    case "productEmbed": break;
   }
 }
 
@@ -167,7 +183,14 @@ export function documentText(doc: Doc): string {
 }
 
 function hasImage(blocks: readonly (BlockNode | ListItemNode)[]): boolean {
-  return blocks.some((b) => b.type === "image" || (b.type !== "paragraph" && b.type !== "heading" && hasImage(b.content as BlockNode[])));
+  return blocks.some((b) => (b.type === "image" ? true : b.type === "productEmbed" ? false : b.type !== "paragraph" && b.type !== "heading" && hasImage(b.content as BlockNode[])));
+}
+
+/** The ids of the products embedded in the document, in order, each once. Embeds only sit at the top level of a document. */
+export function collectProductIds(doc: Doc): string[] {
+  const out: string[] = [];
+  for (const block of doc.content) if (block.type === "productEmbed" && !out.includes(block.attrs.productId)) out.push(block.attrs.productId);
+  return out;
 }
 
 /** True when there is nothing to publish: no words and no image. */

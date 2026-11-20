@@ -6,7 +6,7 @@ import { slugify, uniqueViolationOf } from "@/core/validation/slug";
 import { resolveCreateSlug, resolveUpdateSlug } from "@/core/validation/slug-rules";
 import * as repo from "./repository";
 import { resolvePublishing, statusChangeProblem } from "./rules";
-import { EMPTY_SEO, RESERVED_ARTICLE_SLUGS, type ArticleListRow, type ArticleRow, type ArticleWrite, type ContentFilter, type PageListRow, type PageRow, type PageWrite, type SeoFields } from "./types";
+import { EMPTY_SEO, RESERVED_ARTICLE_SLUGS, type ArticleListRow, type ArticleRow, type ArticleWrite, type ContentFilter, type PageListRow, type PageRow, type PageWrite, type SeoFields, type TypeFilter } from "./types";
 import type { ArticleInput, AuthorInput, CategoryInput, PageInput, TagInput } from "./validation";
 
 /**
@@ -39,7 +39,7 @@ function failIf(problems: string[], field: string): void {
 
 /* ================================== articles ================================== */
 
-export async function listArticles(opts: { q?: string; status: ContentFilter; limit: number; offset: number }) {
+export async function listArticles(opts: { q?: string; status: ContentFilter; type?: TypeFilter; limit: number; offset: number }) {
   return page(await repo.selectArticles({ ...opts, limit: opts.limit + 1 }), opts.limit);
 }
 
@@ -78,7 +78,7 @@ export async function createArticle(input: ArticleInput, who: Who, now: Date = n
   const slug = await resolveCreateSlug({ name: input.title, explicit: input.slug, findTaken: repo.selectArticleSlugsLike });
   reserved(slug);
   const values: ArticleWrite = {
-    slug, title: input.title, excerpt: input.excerpt, content: input.content, status: input.status, publishAt: publishing.publishAt,
+    slug, title: input.title, type: input.type, excerpt: input.excerpt, content: input.content, status: input.status, publishAt: publishing.publishAt,
     authorId: input.authorId, categoryId: input.categoryId, coverPublicId: input.coverPublicId, coverAlt: input.coverPublicId ? input.coverAlt ?? input.title : null,
   };
   const tagIds = await repo.ensureTags(input.tags.map((name) => ({ name, slug: slugify(name) })));
@@ -93,7 +93,7 @@ export async function createArticle(input: ArticleInput, who: Who, now: Date = n
   }
   await logAuditBestEffort({
     actor: who.actorId, action: "article.created", entityType: "article", entityId: id,
-    metadata: { slug, title: input.title, status: input.status, publishAt: values.publishAt?.toISOString() ?? null, tags: tagIds.length },
+    metadata: { slug, title: input.title, type: input.type, status: input.status, publishAt: values.publishAt?.toISOString() ?? null, tags: tagIds.length },
   });
   touch();
   return { id, slug };
@@ -110,7 +110,7 @@ export async function updateArticle(id: string, input: ArticleInput, who: Who, n
   const slug = await resolveUpdateSlug({ current: current.slug, requested: input.slug, confirmed: input.confirmSlugChange, findTaken: repo.selectArticleSlugsLike });
   reserved(slug);
   const next: ArticleWrite = {
-    slug, title: input.title, excerpt: input.excerpt, content: input.content, status: input.status, publishAt: publishing.publishAt,
+    slug, title: input.title, type: input.type, excerpt: input.excerpt, content: input.content, status: input.status, publishAt: publishing.publishAt,
     authorId: input.authorId, categoryId: input.categoryId, coverPublicId: input.coverPublicId, coverAlt: input.coverPublicId ? input.coverAlt ?? input.title : null,
   };
   const tagIds = await repo.ensureTags(input.tags.map((name) => ({ name, slug: slugify(name) })));
@@ -119,6 +119,7 @@ export async function updateArticle(id: string, input: ArticleInput, who: Who, n
   const changed: string[] = [];
   if (next.slug !== current.slug) changed.push("slug");
   if (next.title !== current.title) changed.push("title");
+  if (next.type !== current.type) changed.push("type");
   if (next.excerpt !== current.excerpt) changed.push("excerpt");
   if (JSON.stringify(next.content) !== JSON.stringify(current.content)) changed.push("content");
   if (next.status !== current.status) changed.push("status");

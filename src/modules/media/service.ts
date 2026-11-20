@@ -58,7 +58,7 @@ export async function deleteUnusedMedia(id: string, actorId: string, removeFromC
   const asset = await repo.selectMediaById(id);
   if (!asset) throw new NotFoundError("Image not found");
   const uses = await repo.countImageUses(asset.publicId);
-  if (uses > 0) throw new ConflictError(`This file is used ${uses} time${uses === 1 ? "" : "s"} (product images, article covers or pictures in an article or page), so it cannot be deleted. Remove it from there first.`);
+  if (uses > 0) throw new ConflictError(`This file is used ${uses} time${uses === 1 ? "" : "s"} (product images, article covers, pictures in an article or page, or the homepage), so it cannot be deleted. Remove it from there first.`);
   if (!(await removeFromCloudinary(asset.publicId))) throw new ConflictError("The file could not be removed from Cloudinary. Try again in a moment.");
   await repo.deleteMediaRow(id);
   await logAuditBestEffort({ actor: actorId, action: "media.deleted", entityType: "media", entityId: id, metadata: { publicId: asset.publicId } });

@@ -1,13 +1,20 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import type { EmbedProduct } from "@/modules/catalog/types";
 import { ProductImage } from "@/shared/catalog/product-image";
+import { ProductEmbedCard } from "./product-embed";
 import { sanitizeDocument, type BlockNode, type Doc, type InlineNode, type ListItemNode, type TextNode } from "@/modules/content/document";
 
 /**
  * Draws an article document with React elements only. There is no dangerouslySetInnerHTML anywhere: text goes through
  * React's escaping, links and images are rebuilt from checked values, and the document is sanitised again here, so
  * even a row written outside the editor (a script, an import) can not put markup or script on the page.
+ *
+ * Product blocks (Release 6B) carry only a product id. The page looks the products up live (getEmbedProducts) and passes them
+ * in `products`; an id that is not in the map (archived, draft, deleted) is left out instead of shown broken.
  */
+
+type Products = ReadonlyMap<string, EmbedProduct>;
 
 function renderText(node: TextNode, key: number): ReactNode {
   let out: ReactNode = node.text;
@@ -28,7 +35,7 @@ function renderInline(nodes: readonly InlineNode[]): ReactNode[] {
   return nodes.map((n, i) => (n.type === "text" ? renderText(n, i) : <br key={i} />));
 }
 
-function renderBlocks(blocks: readonly (BlockNode | ListItemNode)[]): ReactNode[] {
+function renderBlocks(blocks: readonly (BlockNode | ListItemNode)[], products: Products): ReactNode[] {
   return blocks.map((block, i) => {
     switch (block.type) {
       case "paragraph":
@@ -36,13 +43,17 @@ function renderBlocks(blocks: readonly (BlockNode | ListItemNode)[]): ReactNode[
       case "heading":
         return block.attrs.level === 2 ? <h2 key={i}>{renderInline(block.content)}</h2> : block.attrs.level === 3 ? <h3 key={i}>{renderInline(block.content)}</h3> : <h4 key={i}>{renderInline(block.content)}</h4>;
       case "bulletList":
-        return <ul key={i}>{renderBlocks(block.content)}</ul>;
+        return <ul key={i}>{renderBlocks(block.content, products)}</ul>;
       case "orderedList":
-        return <ol key={i}>{renderBlocks(block.content)}</ol>;
+        return <ol key={i}>{renderBlocks(block.content, products)}</ol>;
       case "listItem":
-        return <li key={i}>{renderBlocks(block.content)}</li>;
+        return <li key={i}>{renderBlocks(block.content, products)}</li>;
       case "blockquote":
-        return <blockquote key={i}>{renderBlocks(block.content)}</blockquote>;
+        return <blockquote key={i}>{renderBlocks(block.content, products)}</blockquote>;
+      case "productEmbed": {
+        const product = products.get(block.attrs.productId);
+        return product ? <ProductEmbedCard key={i} product={product} /> : null;
+      }
       case "image": {
         const { publicId, alt, width = 1200, height = 800 } = block.attrs;
         return (
@@ -55,7 +66,7 @@ function renderBlocks(blocks: readonly (BlockNode | ListItemNode)[]): ReactNode[
   });
 }
 
-export function DocumentRenderer({ doc }: { doc: Doc }) {
+export function DocumentRenderer({ doc, products }: { doc: Doc; products?: Products }) {
   const clean = sanitizeDocument(doc);
-  return <div className="article-body max-w-prose space-y-4 text-lg leading-relaxed [&_blockquote]:border-l-4 [&_blockquote]:border-coral-600 [&_blockquote]:pl-4 [&_blockquote]:italic [&_h2]:mt-8 [&_h2]:text-2xl [&_h3]:mt-6 [&_h3]:text-xl [&_h4]:mt-4 [&_h4]:text-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6">{renderBlocks(clean.content)}</div>;
+  return <div className="article-body max-w-prose space-y-4 text-lg leading-relaxed [&_blockquote]:border-l-4 [&_blockquote]:border-coral-600 [&_blockquote]:pl-4 [&_blockquote]:italic [&_h2]:mt-8 [&_h2]:text-2xl [&_h3]:mt-6 [&_h3]:text-xl [&_h4]:mt-4 [&_h4]:text-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6">{renderBlocks(clean.content, products ?? new Map())}</div>;
 }
