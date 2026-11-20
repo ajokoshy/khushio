@@ -32,6 +32,18 @@ export function sectionState(section: Pick<SectionRow, "isEnabled" | "publishAt"
   return "live";
 }
 
+/**
+ * JSON with the keys sorted, so two configs with the same settings compare equal. Postgres jsonb returns keys in its own order
+ * (shorter names first), which differs from the order Zod writes them; comparing plain JSON.stringify would call every save a change.
+ */
+export function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${stableJson((value as Record<string, unknown>)[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
 /* ================================== admin ================================== */
 
 export const listSections = () => repo.selectSections();
@@ -64,7 +76,7 @@ export async function updateSection(id: string, input: SectionInput, rawConfig: 
   const next: Omit<SectionWrite, "type"> = { heading: input.heading, config, isEnabled: input.isEnabled, publishAt: input.publishAt };
   const changed: string[] = [];
   if (next.heading !== current.heading) changed.push("heading");
-  if (JSON.stringify(next.config) !== JSON.stringify(current.config)) changed.push("config");
+  if (stableJson(next.config) !== stableJson(current.config)) changed.push("config");
   if (next.isEnabled !== current.isEnabled) changed.push("enabled");
   if ((next.publishAt?.getTime() ?? null) !== (current.publishAt?.getTime() ?? null)) changed.push("publishAt");
   if (changed.length === 0) return;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { configFromForm, formValuesFromConfig, parseSectionConfig, SECTION_TYPES, STARTING_CONFIG } from "@/modules/homepage/config";
 import { safeLinkTarget } from "@/modules/homepage/links";
-import { sectionState } from "@/modules/homepage/service";
+import { sectionState, stableJson } from "@/modules/homepage/service";
 import { sectionInputSchema } from "@/modules/homepage/validation";
 import { navItemInputSchema } from "@/modules/navigation/validation";
 
@@ -108,5 +108,15 @@ describe("navigation link input", () => {
     for (const href of ["javascript:alert(1)", "http://example.com", "//evil.example", "deals"]) expect(navItemInputSchema.safeParse({ area: "header", label: "x", href }).success, href).toBe(false);
     expect(navItemInputSchema.safeParse({ area: "sidebar", label: "x", href: "/a" }).success).toBe(false);
     expect(navItemInputSchema.safeParse({ area: "header", label: "x".repeat(41), href: "/a" }).success).toBe(false);
+  });
+});
+
+describe("stableJson", () => {
+  it("ignores key order (jsonb reorders keys) but not values or array order", () => {
+    expect(stableJson({ tone: "forest", text: "Sale", ctaHref: null })).toBe(stableJson({ text: "Sale", ctaHref: null, tone: "forest" }));
+    expect(stableJson({ a: { y: 1, x: [1, 2] } })).toBe(stableJson({ a: { x: [1, 2], y: 1 } }));
+    expect(stableJson({ ids: ["a", "b"] })).not.toBe(stableJson({ ids: ["b", "a"] }));
+    expect(stableJson({ text: "Sale" })).not.toBe(stableJson({ text: "Sale!" }));
+    expect(stableJson(null)).toBe("null");
   });
 });
