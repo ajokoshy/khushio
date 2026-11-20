@@ -47,7 +47,7 @@ describe("product embeds in the document whitelist (Release 6B)", () => {
   });
 });
 
-const product: EmbedProduct = { id: A, slug: "tea-kettle", name: "Tea kettle <b>", summary: "Boils fast", brandName: "Kettlr", imagePublicId: null, imageAlt: null, minPriceMinor: 129900, maxPriceMinor: 129900, linkSlug: "kettle-amazon", merchantName: "Amazon" };
+const product: EmbedProduct = { id: A, slug: "tea-kettle", name: "Tea kettle <b>", summary: "Boils fast", brandName: "Kettlr", brandSlug: "kettlr", imagePublicId: null, imageAlt: null, minPriceMinor: 129900, maxPriceMinor: 129900, linkSlug: "kettle-amazon", merchantName: "Amazon" };
 
 describe("DocumentRenderer with product embeds", () => {
   const document = sanitizeDocument(doc(embed(A), embed(B), { type: "paragraph", content: [{ type: "text", text: "after" }] })) as Doc;
