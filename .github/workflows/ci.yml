@@ -23,7 +23,7 @@ jobs:
       # Optional: dedicated Neon test branch (reserved for integration tests from Release 3A).
       TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -65,7 +65,7 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Playwright smoke skipped::E2E_DATABASE_URL secret is missing or empty, so the e2e tests did not run. Add it under Settings > Secrets and variables > Actions (and under Dependabot secrets for Dependabot PRs)."
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.gate.outputs.enabled == 'true'
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.enabled == 'true'
