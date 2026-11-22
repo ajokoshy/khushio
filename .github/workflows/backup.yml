@@ -44,7 +44,7 @@ jobs:
           gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" --symmetric --cipher-algo AES256 out/*.sql.gz
           rm out/*.sql.gz
           ls -la out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: khushio-backup-${{ github.run_id }}
           path: out/*.gpg
