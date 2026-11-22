@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
 import { getCollectionPage } from "@/modules/catalog/service";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { ProductGrid } from "@/shared/catalog/product-card";
@@ -9,8 +10,8 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const data = await getCollectionPage((await params).slug);
-  if (!data) return { title: "Collection not found", robots: { index: false } };
-  return { title: data.collection.name, description: data.collection.description ?? `A curated collection on Khushio: ${data.collection.name}.` };
+  if (!data) return notFoundMetadata("Collection");
+  return buildMetadata({ title: data.collection.name, description: data.collection.description ?? `A curated collection on Khushio: ${data.collection.name}.`, path: `/collections/${data.collection.slug}`, noindex: data.cards.length === 0 });
 }
 
 export default async function CollectionPage({ params }: Props) {

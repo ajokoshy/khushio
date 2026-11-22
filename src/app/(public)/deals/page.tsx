@@ -1,5 +1,4 @@
-import type { Metadata } from "next";
-import { env } from "@/core/config/env";
+import { buildMetadata } from "@/modules/seo/metadata";
 import { getDealsPage } from "@/modules/deals/public";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { DealGrid, StandaloneCoupons } from "@/shared/deals/deal-list";
@@ -7,14 +6,14 @@ import { DealGrid, StandaloneCoupons } from "@/shared/deals/deal-list";
 // Same as CACHE_TTL.deals (5 minutes). The offers are also filtered with the clock at every rebuild.
 export const revalidate = 300;
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Deals and coupons",
   description: "Current offers and coupon codes from the stores on Khushio. Expired offers are removed automatically.",
-  alternates: { canonical: `${env.NEXT_PUBLIC_SITE_URL}/deals` },
-};
+  path: "/deals",
+});
 
 /** `next build` without a database (CI, forks) prerenders an empty list; the 5-minute revalidate fills it in at runtime. */
-const buildingWithoutDatabase = process.env.NEXT_PHASE === "phase-production-build" && !env.DATABASE_URL;
+const buildingWithoutDatabase = process.env.NEXT_PHASE === "phase-production-build" && !process.env.DATABASE_URL;
 
 export default async function DealsPage() {
   const { deals, coupons } = buildingWithoutDatabase ? { deals: [], coupons: [] } : await getDealsPage();

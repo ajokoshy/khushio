@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { getPublishedLegalLinks } from "@/modules/launch/service";
 import { getNavigation } from "@/modules/navigation/service";
 import { SITE } from "@/shared/constants/site";
 
 export async function SiteFooter() {
-  const links = await getNavigation("footer");
+  // Release 7B: the published legal pages (privacy, terms, affiliate disclosure, contact) are linked automatically, after any links typed in Navigation.
+  const [typed, legal] = await Promise.all([getNavigation("footer"), getPublishedLegalLinks()]);
+  const links = [...typed, ...legal.filter((l) => !typed.some((t) => t.href === l.href))];
   return (
     <footer className="mt-24 border-t border-cream-200 py-10 text-sm text-ink-600">
       <div className="mx-auto max-w-6xl px-4">

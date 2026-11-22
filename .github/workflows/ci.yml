@@ -31,8 +31,14 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm run check:secrets
       - run: npm test
       - run: npm run build
+      # Release 7B: public pages must not ship admin-only code and must stay under the JavaScript budget.
+      - run: npm run check:bundles
+      # Release 7B: known vulnerabilities in the packages that run in production. Moderate and below are reviewed monthly
+      # (docs/SECURITY.md lists the accepted ones); a NEW high or critical finding fails the build.
+      - run: npm audit --omit=dev --audit-level=critical
 
   e2e:
     name: Playwright smoke

@@ -1,0 +1,25 @@
+# Release 7B: weekly update pull requests for npm packages (minor and patch grouped into one) and monthly for the GitHub
+# Actions used by the workflows. Major versions are NOT proposed automatically for the framework, the validation library and
+# the editor: they are planned, tested releases (see docs/SECURITY.md, "Accepted for now").
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: zod
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@tiptap/*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

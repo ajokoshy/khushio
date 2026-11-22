@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { getEmbedProducts } from "@/modules/catalog/service";
 import { collectProductIds, excerptFrom } from "@/modules/content/document";
 import { getVisibleArticle } from "@/modules/content/public";
-import { contentMetadata } from "@/modules/content/seo";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
+import { articleJsonLd } from "@/modules/seo/jsonld";
+import { JsonLdScript } from "@/shared/seo/json-ld";
+import { imageUrl } from "@/infrastructure/cloudinary";
 import { ARTICLE_TYPE_LABELS } from "@/modules/content/types";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { ProductImage } from "@/shared/catalog/product-image";
@@ -18,8 +21,8 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const article = await getVisibleArticle((await params).slug);
-  if (!article) return { title: "Article not found", robots: { index: false } };
-  return contentMetadata({ title: article.title, description: article.excerpt ?? excerptFrom(article.content), path: `/articles/${article.slug}`, seo: article.seo, coverPublicId: article.coverPublicId, type: "article" });
+  if (!article) return notFoundMetadata("Article");
+  return buildMetadata({ title: article.title, description: article.excerpt ?? excerptFrom(article.content), path: `/articles/${article.slug}`, override: article.seo, image: article.coverPublicId ? imageUrl(article.coverPublicId, "editorial") : null, type: "article", article: { publishedTime: article.publishAt, modifiedTime: article.updatedAt } });
 }
 
 export default async function ArticlePage({ params }: Props) {
@@ -31,6 +34,7 @@ export default async function ArticlePage({ params }: Props) {
   const isGuide = article.type !== "article";
   return (
     <article className="mx-auto max-w-3xl px-4 py-8">
+      <JsonLdScript data={articleJsonLd({ headline: article.title, path: `/articles/${article.slug}`, description: article.excerpt ?? excerptFrom(article.content), image: article.coverPublicId ? imageUrl(article.coverPublicId, "editorial") : null, datePublished: article.publishAt, dateModified: article.updatedAt, authorName: article.authorName })} />
       <Breadcrumbs items={[{ label: "Home", href: "/" }, isGuide ? { label: "Guides", href: "/guides" } : { label: "Articles", href: "/articles" }, ...(article.categoryName && article.categorySlug ? [{ label: article.categoryName, href: `/articles/category/${article.categorySlug}` }] : []), { label: article.title }]} />
             {isGuide && <p className="mt-4 text-xs font-medium uppercase tracking-wide text-forest-800">{ARTICLE_TYPE_LABELS[article.type]}</p>}
       <h1 className="mt-2 text-4xl leading-tight">{article.title}</h1>

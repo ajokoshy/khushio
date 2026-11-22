@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { listBrandOptions, listPublicCategoryOptions, listTopCategories } from "@/modules/discover/service";
 import { listCatalog } from "@/modules/catalog/service";
-import { parseCatalogParams } from "@/modules/catalog/filters";
-import { listingMetadata } from "@/modules/catalog/seo";
+import { isFilteredView, parseCatalogParams } from "@/modules/catalog/filters";
+import { buildMetadata } from "@/modules/seo/metadata";
 import { Listing } from "@/shared/catalog/listing";
 
 type SP = Record<string, string | string[] | undefined>;
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }) {
   const filters = parseCatalogParams(await searchParams);
-  return listingMetadata({
+  return buildMetadata({
     title: filters.q ? `Search: ${filters.q}` : "Discover products",
     description: "Browse and search products, brands and categories on Khushio.",
     path: "/discover",
-    filters,
+    noindex: isFilteredView(filters),
   });
 }
 

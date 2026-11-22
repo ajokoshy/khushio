@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { env } from "@/core/config/env";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
 import { getArticleListing, getGuideTypes } from "@/modules/content/public";
 import { ARTICLE_TYPE_PLURALS, GUIDE_TYPES, isArticleType, type ArticleType } from "@/modules/content/types";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
@@ -16,14 +16,9 @@ const guideType = (value: string): ArticleType | null => (isArticleType(value) &
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const type = guideType((await params).type);
-  if (!type) return { title: "Not found", robots: { index: false } };
+  if (!type) return notFoundMetadata("Page");
   const page = pageFrom((await searchParams).page);
-  return {
-    title: ARTICLE_TYPE_PLURALS[type],
-    description: `${ARTICLE_TYPE_PLURALS[type]} from Khushio, with the products we recommend.`,
-    alternates: { canonical: `${env.NEXT_PUBLIC_SITE_URL}/guides/${type}` },
-    robots: page > 1 ? { index: false, follow: true } : { index: true, follow: true },
-  };
+  return buildMetadata({ title: ARTICLE_TYPE_PLURALS[type], description: `${ARTICLE_TYPE_PLURALS[type]} from Khushio, with the products we recommend.`, path: `/guides/${type}`, page });
 }
 
 export default async function GuideTypePage({ params, searchParams }: Props) {

@@ -15,6 +15,8 @@ export async function listMedia(opts: { q?: string; usage: MediaUsageFilter; lim
   return { rows: rows.slice(0, opts.limit), hasNext: rows.length > opts.limit };
 }
 
+export const countMissingAlt = () => repo.countMissingAlt();
+
 export type RecordedUpload = { asset: MediaRow; /** The file was already in the library; the freshly uploaded copy is redundant. */ duplicate: boolean };
 
 /**

@@ -4,8 +4,9 @@ import { getPublicMerchant } from "@/modules/merchants/service";
 import { getDealsForMerchant } from "@/modules/deals/public";
 import { DealGrid } from "@/shared/deals/deal-list";
 import { listCatalog } from "@/modules/catalog/service";
-import { parseCatalogParams } from "@/modules/catalog/filters";
-import { listingMetadata } from "@/modules/catalog/seo";
+import { isFilteredView, parseCatalogParams } from "@/modules/catalog/filters";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
+import { getSeoOverride } from "@/modules/seo/service";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { Listing } from "@/shared/catalog/listing";
 
@@ -14,8 +15,12 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<SP> };
 
 export async function generateMetadata({ params, searchParams }: Props) {
   const store = await getPublicMerchant((await params).slug);
-  if (!store) return { title: "Store not found", robots: { index: false } };
-  return listingMetadata({ title: `Products at ${store.name}`, description: `Products you can buy at ${store.name}, found on Khushio.`, path: `/stores/${store.slug}`, filters: parseCatalogParams(await searchParams) });
+  if (!store) return notFoundMetadata("Store");
+  const filters = parseCatalogParams(await searchParams);
+  const filtered = isFilteredView(filters);
+  // Thin: no products and no live offers to show.
+  const thin = !filtered && (await listCatalog({ scope: { merchantId: store.id }, filters })).cards.length === 0 && (await getDealsForMerchant(store.id)).length === 0;
+  return buildMetadata({ title: `Products at ${store.name}`, description: `Products you can buy at ${store.name}, found on Khushio.`, path: `/stores/${store.slug}`, noindex: filtered || thin, override: await getSeoOverride("store", store.id) });
 }
 
 export default async function StorePage({ params, searchParams }: Props) {

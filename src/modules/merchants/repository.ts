@@ -1,6 +1,8 @@
 import { and, asc, count, eq, ilike, inArray, like, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { affiliateLinks, merchantPrograms, merchants } from "@/core/database/schema";
+import { runAtomically } from "@/core/database/atomic";
+import { goneStatements, movedStatements } from "@/core/database/redirect-statements";
+import { affiliateLinks, merchantPrograms, merchants, seoMetadata } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
 import type { MerchantRow, MerchantWrite, StatusFilter } from "./types";
 
@@ -61,13 +63,18 @@ export async function insertMerchant(values: MerchantWrite): Promise<MerchantRow
   return row;
 }
 
-export async function updateMerchantRow(id: string, values: Partial<MerchantWrite> & { isActive?: boolean }): Promise<MerchantRow | null> {
+export async function updateMerchantRow(id: string, values: Partial<MerchantWrite> & { isActive?: boolean }, moved: { fromPath: string; toPath: string } | null = null): Promise<MerchantRow | null> {
+  if (moved) {
+    // Release 7A: the new slug and the 301 from the old /stores address are one all-or-nothing write.
+    await runAtomically((d) => [d.update(merchants).set(values).where(eq(merchants.id, id)), ...movedStatements(d, moved)]);
+    return selectMerchantById(id);
+  }
   const [row] = await db().update(merchants).set(values).where(eq(merchants.id, id)).returning(columns);
   return row ?? null;
 }
 
-export async function deleteMerchantRow(id: string): Promise<void> {
-  await db().delete(merchants).where(eq(merchants.id, id));
+export async function deleteMerchantRow(id: string, gonePath: string | null = null): Promise<void> {
+  await runAtomically((d) => [d.delete(seoMetadata).where(and(eq(seoMetadata.entityType, "store"), eq(seoMetadata.entityId, id))), d.delete(merchants).where(eq(merchants.id, id)), ...(gonePath ? goneStatements(d, { path: gonePath }) : [])]);
 }
 
 /** Uses links_merchant_idx. */

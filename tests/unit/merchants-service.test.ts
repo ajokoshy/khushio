@@ -7,6 +7,7 @@ const repo = vi.hoisted(() => ({
 const audit = vi.hoisted(() => vi.fn());
 const revalidate = vi.hoisted(() => vi.fn());
 vi.mock("@/modules/merchants/repository", () => repo);
+vi.mock("@/modules/redirects/repository", () => ({ deleteRuleByFrom: async () => undefined }));
 vi.mock("@/core/audit", () => ({ logAuditBestEffort: (...a: unknown[]) => audit(...a) }));
 vi.mock("next/cache", () => ({ revalidateTag: (...a: unknown[]) => revalidate(...a), unstable_cache: <T extends (...a: never[]) => unknown>(fn: T) => fn }));
 
@@ -64,7 +65,7 @@ describe("merchants", () => {
     expect(repo.updateMerchantRow).toHaveBeenCalledWith("m1", { isActive: false });
     repo.countProgramsForMerchant.mockResolvedValue(0);
     await service.deleteMerchant("m1", "a");
-    expect(repo.deleteMerchantRow).toHaveBeenCalledWith("m1");
+    expect(repo.deleteMerchantRow).toHaveBeenCalledWith("m1", "/stores/amazon-india");
   });
 
   it("restores an archived merchant", async () => {

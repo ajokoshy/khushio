@@ -10,6 +10,8 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 | `core/audit` | `logAudit`, audit list for the viewer |
 | `core/database` | Neon client and Drizzle schema |
 | `core/config` | Env validation, cache TTLs and tags |
+| `core/security` | Safe login redirect, Content-Security-Policy and headers (`csp`), the in-memory limiter for public write endpoints (`rate-limit`), CSP report summary (`csp-report`) (7B) |
+| `core/monitoring` | One-line error logging for Vercel logs (`log`, used by `src/instrumentation.ts`) (7B) |
 | `core/errors`, `core/security`, `core/validation` | Error classes and JSON mapping, redirect helpers, shared validators (`slug.ts`, `slug-rules.ts`, `fields.ts` for admin forms) |
 
 ## Shared UI (`src/shared`)
@@ -38,7 +40,9 @@ Layers, one direction: `src/app` (routes) -> `src/modules/<name>/service.ts` -> 
 | content | articles, guides, pages, authors, topics, tags; the JSON document whitelist with product embeds (`document`, `rules`, `visibility`, `validation`, `repository`, `service`, `public`, `seo`, `types`) | 6A, 6B |
 | homepage | the homepage builder: per-type Zod section configs, safe link targets, signed preview links, resolvers that read each section's data from the module that owns it (`config`, `links`, `preview`, `validation`, `repository`, `service`, `types`) | 6B |
 | navigation | header and footer links from `navigation_items`, with the built-in menu as fallback (`repository`, `service`, `validation`, `types`) | 6B |
-| seo | folder only | 7A |
+| seo | `buildMetadata` (the one place that writes title, description, canonical, robots and Open Graph), JSON-LD builders, sitemap plan and XML, search overrides for products, categories, brands and stores, the SEO audit (`metadata`, `jsonld`, `sitemap`, `repository`, `service`, `validation`, `types`) | 7A |
+| launch | the launch checklist: pure checks over facts (`checks`), the database reads and the footer legal links (`repository`, `service`), `/admin/launch` | 7B |
+| redirects | permanent redirects and 410 pages: pure path rules and the no-chains check (`path`), the edge cache and the middleware step (`edge-cache`, `middleware`), admin CRUD and the helpers other services call on a slug change or delete (`service`), the cached map for `/api/redirect-map` (`public`) | 7A |
 | tools, studio, business, compare | folder only, behind feature flags | 8 and later |
 
 ## Release 3A rules worth knowing

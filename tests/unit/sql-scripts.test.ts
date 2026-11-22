@@ -376,3 +376,51 @@ describe("khushio-sql-phase-6b.sql (guides, product embeds and the homepage buil
     expect(Number(rows[0]?.n)).toBe(2);
   });
 });
+
+describe("khushio-sql-phase-7a.sql (SEO, structured data and redirects)", () => {
+  it("creates the redirects table with its two indexes and two checks, and reports them in its status row", async () => {
+    const results = await db.exec(read("khushio-sql-phase-7a.sql"));
+    const row = results.at(-1)?.rows[0] as Record<string, unknown>;
+    expect(Number(row.redirects_table)).toBe(1);
+    expect(Number(row.redirects_indexes)).toBe(2);
+    expect(Number(row.redirects_checks)).toBe(2);
+    expect(row.status).toBe("khushio-sql-phase-7a applied");
+  });
+
+  it("keeps rows safe: one rule per old address, a 410 has no target, other rules have one, no self-redirects, only 301/302/410", async () => {
+    await db.exec(read("khushio-sql-phase-7a.sql"));
+    await db.exec("DELETE FROM redirects");
+    await db.exec("INSERT INTO redirects (from_path, to_path, status_code) VALUES ('/a', '/b', 301)");
+    await expect(db.exec("INSERT INTO redirects (from_path, to_path, status_code) VALUES ('/a', '/c', 301)")).rejects.toThrow();
+    await expect(db.exec("INSERT INTO redirects (from_path, to_path, status_code) VALUES ('/x', '/x', 301)")).rejects.toThrow();
+    await expect(db.exec("INSERT INTO redirects (from_path, to_path, status_code) VALUES ('/x', NULL, 301)")).rejects.toThrow();
+    await expect(db.exec("INSERT INTO redirects (from_path, to_path, status_code) VALUES ('/x', '/y', 410)")).rejects.toThrow();
+    await expect(db.exec("INSERT INTO redirects (from_path, to_path, status_code) VALUES ('/x', '/y', 200)")).rejects.toThrow();
+    await db.exec("INSERT INTO redirects (from_path, to_path, status_code) VALUES ('/gone', NULL, 410)");
+    expect(Number((await db.query<{ n: number }>("SELECT count(*) AS n FROM redirects")).rows[0]?.n)).toBe(2);
+  });
+
+  it("changes no existing table and is safe to run again", async () => {
+    await db.exec(read("khushio-sql-phase-7a.sql"));
+    await db.exec(read("khushio-sql-phase-7a.sql"));
+    expect(Number((await db.query<{ n: number }>("SELECT count(*) AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'redirects'")).rows[0]?.n)).toBe(1);
+  });
+});
+
+describe("khushio-sql-phase-7b.sql (analytics, performance, hardening and launch)", () => {
+  it("changes nothing: the table count stays the same and the status row says so", async () => {
+    await db.exec(read("khushio-sql-phase-7a.sql"));
+    const before = Number((await db.query<{ n: number }>("SELECT count(*) AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")).rows[0]?.n);
+    const results = await db.exec(read("khushio-sql-phase-7b.sql"));
+    const row = results.at(-1)?.rows[0] as Record<string, unknown>;
+    expect(Number(row.tables_in_database)).toBe(before);
+    expect(row.status).toBe("khushio-sql-phase-7b applied (no schema change)");
+    const after = Number((await db.query<{ n: number }>("SELECT count(*) AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")).rows[0]?.n);
+    expect(after).toBe(before);
+  });
+
+  it("contains no statement that writes (the tuning queries are comments only)", () => {
+    const code = read("khushio-sql-phase-7b.sql").split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+    expect(code).not.toMatch(/\b(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE|TRUNCATE)\b/i);
+  });
+});

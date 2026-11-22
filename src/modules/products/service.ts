@@ -1,5 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { logAuditBestEffort } from "@/core/audit";
+import { gonePathOf, refreshRedirects, releasePublicPath, slugMove } from "@/modules/redirects/service";
 import { CACHE_TAGS } from "@/core/config/cache";
 import { ConflictError, NotFoundError, ValidationError } from "@/core/errors";
 import { PERMISSIONS as P } from "@/core/permissions/keys";
@@ -145,6 +146,7 @@ export async function createProduct(input: ProductInput, actor: Actor): Promise<
     entityId: id,
     metadata: { slug, name: input.name, status, variants: input.variants.length },
   });
+  await releasePublicPath("product", slug); // a removed product's address can be used again
   touch();
   const created = await repo.selectProductById(id);
   if (!created) throw new Error("Product was not found after saving");
@@ -170,12 +172,15 @@ export async function updateProduct(id: string, input: ProductInput, actor: Acto
 
   const slug = await resolveUpdateSlug({ current: before.slug, requested: input.slug, confirmed: input.confirmSlugChange, findTaken: repo.selectProductSlugsLike });
   const graph = toGraph(input, slug, new Set(current.variants.map((v) => v.id)));
+  // Release 7A: a slug change writes a 301 from the old address in the same atomic write (only for a product that was ever public).
+  const moved = slugMove("product", before.slug, slug, before.status);
 
   try {
-    await repo.updateProductGraph(id, graph, new Set(current.variants.map((v) => v.id)));
+    await repo.updateProductGraph(id, graph, new Set(current.variants.map((v) => v.id)), moved);
   } catch (error) {
     rethrowDuplicate(error);
   }
+  if (moved) refreshRedirects();
 
   const changed = (["name", "summary", "description", "brandId", "status", "isFeatured"] as const).filter((key) => graph.product[key] !== before[key]);
   await logAuditBestEffort({
@@ -225,7 +230,9 @@ export async function deleteProduct(id: string, actor: Actor): Promise<void> {
   if (!current) throw new NotFoundError("Product not found");
   const problem = deleteProblem({ status: current.status, affiliateLinks: await repo.countAffiliateLinksForProduct(id) });
   if (problem) throw new ConflictError(problem);
-  await repo.deleteProductRow(id);
+  const gonePath = gonePathOf("product", current.slug, current.status); // 410 for a product that was public
+  await repo.deleteProductRow(id, gonePath);
+  if (gonePath) refreshRedirects();
   await logAuditBestEffort({ actor: actor.id, action: "product.deleted", entityType: "product", entityId: id, metadata: { slug: current.slug, name: current.name } });
   touch();
 }

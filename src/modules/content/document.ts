@@ -50,6 +50,8 @@ export function safeHref(value: unknown): string | null {
   if (href === "" || href.length > DOCUMENT_LIMITS.maxHref) return null;
   // Browsers ignore tabs, new lines and other control characters inside a scheme ("java\nscript:"), so check without them.
   const probe = href.replace(/[\u0000-\u001F\u007F\u0080-\u009F\s]/g, "");
+  // Browsers read "\" as "/" in web addresses, so "/\\evil.example" would leave this site like "//evil.example" does (found in the 7B security pass).
+  if (probe.includes("\\")) return null;
   if (/^\/(?!\/)/.test(probe)) return probe === href ? href : null;
   if (/^https?:\/\/[^/\s]/i.test(probe) || /^mailto:[^\s]+@[^\s]+$/i.test(probe)) return probe === href ? href : null;
   return null;

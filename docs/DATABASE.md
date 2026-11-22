@@ -19,6 +19,8 @@ Plain, re-runnable SQL files in `drizzle/migrations/`, pasted into the Neon SQL 
 | `khushio-sql-phase-5b.sql` | Release 5B: `affiliate_import_logs.entity` (nullable) and index `import_logs_started_idx` | Once, before deploying 5B |
 | `khushio-sql-phase-6a.sql` | Release 6A: seven new tables (`author_profiles`, `content_categories`, `content_tags`, `articles`, `article_tags`, `pages`, `seo_metadata`), 9 indexes, 4 foreign keys | Once, before deploying 6A |
 | `khushio-sql-phase-6b.sql` | Release 6B: `articles.type` (text, NOT NULL, default `article`) and index `articles_type_status_publish_idx` (type, status, publish_at). No new table | Once, after phase-6a, before deploying 6B |
+| `khushio-sql-phase-7b.sql` | Release 7B: nothing changes; prints a status row. Holds the optional tuning queries as comments | Once, after 7a (optional: it changes nothing) |
+| `khushio-sql-phase-7a.sql` | Release 7A: ONE new table, `redirects` (unique `from_path`, `to_path`, `status_code`, `source`), index on `to_path`, two CHECK constraints. Nothing existing changes | Once, before or after deploying 7A (the 6B code ignores the table) |
 | `set-admin.sql` | Create or change the admin user (email, name, password) | After firstload, and whenever the admin changes |
 | `khushio-sql-phase-<release>.sql` | The release's own additions (one file per release) | In release order, before deploying that release's code |
 
@@ -30,7 +32,7 @@ No file is ever edited after its release ships. There is no `drizzle-kit migrate
 - Merchants and affiliate: merchants, merchant_programs, affiliate_networks, affiliate_links, affiliate_clicks, affiliate_click_daily, affiliate_conversions, affiliate_import_logs.
 - Platform: site_settings, feature_flags, navigation_items, homepage_sections, media_assets.
 
-Added after firstload: `login_attempts` (Release 2C, identity group) is the 30th table. Releases 3A to 4B only add columns, indexes and one settings row to existing tables (no new tables). Release 5A adds the deals group, so the database has **34 tables** after it (`deals`, `coupons`, `deal_products`, `deal_categories`). Release 5B adds one column to an existing table. Release 6A adds the content group (7 tables), so the database has **41 tables** after it. Release 6B adds one column and one index to `articles` (still 41 tables).
+Added after firstload: `login_attempts` (Release 2C, identity group) is the 30th table. Releases 3A to 4B only add columns, indexes and one settings row to existing tables (no new tables). Release 5A adds the deals group, so the database has **34 tables** after it (`deals`, `coupons`, `deal_products`, `deal_categories`). Release 5B adds one column to an existing table. Release 6A adds the content group (7 tables), so the database has **41 tables** after it. Release 6B adds one column and one index to `articles` (still 41 tables). Release 7A adds the `redirects` table, so the database has **42 tables** after it.
 
 ## Release scripts already written
 | Release | File | Contents |
@@ -47,6 +49,7 @@ Added after firstload: `login_attempts` (Release 2C, identity group) is the 30th
 | 5A | `khushio-sql-phase-5a.sql` | New tables `deals` (slug unique, status, window `starts_at`/`ends_at`, `is_featured`, `sort_order`), `coupons` (code unique per store ignoring case, optional deal), `deal_products`, `deal_categories`; indexes `deals_ends_at_idx`, `deals_merchant_ends_idx`, `deals_featured_sort_idx`, `coupons_*`, `deal_*_idx`. Nothing existing changes, so it is safe before the code |
 | 5B | `khushio-sql-phase-5b.sql` | `affiliate_import_logs.entity text NULL` (what was imported; old rows stay NULL) and `import_logs_started_idx` on `started_at` |
 | 6A | `khushio-sql-phase-6a.sql` | New tables `author_profiles`, `content_categories` (slug, name, `is_active`, `sort_order`), `content_tags`, `articles` (JSON `content`, `status` text DRAFT/REVIEW/SCHEDULED/PUBLISHED/ARCHIVED, `publish_at`, author and topic set NULL on delete, cover public id), `article_tags`, `pages`, `seo_metadata` (one row per `entity_type` + `entity_id`). Nothing existing changes, so it is safe before the code |
+| 7A | `khushio-sql-phase-7a.sql` | New table `redirects` (`from_path` unique and lower case, `to_path` NULL only for a 410, `status_code` 301/302/410, `source` auto/manual), `redirects_to_path_idx`, checks `redirects_status_chk` and `redirects_target_chk`. `seo_metadata` needs no new index (its unique (entity_type, entity_id) index serves every 7A lookup) and now also holds products, categories, brands and stores (`entity_type` product, category, brand, store; no SQL needed). |
 | 6B | `khushio-sql-phase-6b.sql` | `articles.type text NOT NULL DEFAULT 'article'` (article, guide, review, comparison, how-to; every existing row becomes `article`) and one index on (`type`, `status`, `publish_at`). The homepage builder and navigation editor use `homepage_sections` and `navigation_items`, which firstload created, so they need no change. Safe before the code |
 
 ## Release scripts still to come
@@ -55,8 +58,7 @@ Added after firstload: `login_attempts` (Release 2C, identity group) is the 30th
 | 4A | `khushio-sql-phase-4a.sql` | No schema change (marker file) |
 | 4B | `khushio-sql-phase-4b.sql` | Index on `affiliate_conversions (converted_at)`, retention setting row |
 | 6B | `khushio-sql-phase-6b.sql` | `type` column on articles and its index |
-| 7A | `khushio-sql-phase-7a.sql` | redirects table, missing seo_metadata indexes |
-| 7B | `khushio-sql-phase-7b.sql` | Optional index tuning |
+| 7B | `khushio-sql-phase-7b.sql` | No schema change. A marker file with a status row and, in comments, the read-only tuning queries to run after real traffic (slow queries, unused indexes, table sizes). No index was found missing. |
 | 8, 9 | `khushio-sql-phase-8.sql`, `khushio-sql-phase-9.sql` | Marker (8), small additions (9) |
 
 Never run destructive SQL automatically; review every file before running it.

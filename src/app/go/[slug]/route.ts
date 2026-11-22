@@ -1,6 +1,7 @@
 import { after, type NextRequest, NextResponse } from "next/server";
 import { findGoLink, insertClick } from "@/modules/affiliate/click-repository";
 import { handleGo } from "@/modules/affiliate/go";
+import { clientKey, createRateLimiter } from "@/core/security/rate-limit";
 
 /**
  * /go/[slug]: the only way a visitor leaves Khushio for a store (Release 4A). Node runtime on purpose: the Neon HTTP
@@ -9,6 +10,12 @@ import { handleGo } from "@/modules/affiliate/go";
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * Release 7B: a brake on click recording. The visitor is ALWAYS sent on to the store; only the database write is skipped when
+ * one address makes more than 120 clicks a minute (a bot or a loop). Held in memory only; no address is stored.
+ */
+const clickLimiter = createRateLimiter({ limit: 120, windowMs: 60_000 });
 
 const HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } as const;
 
@@ -25,7 +32,7 @@ async function respond(request: NextRequest, context: { params: Promise<{ slug: 
       },
       {
         findLink: findGoLink,
-        recordClick: insertClick,
+        recordClick: (click: Parameters<typeof insertClick>[0]) => (clickLimiter.allow(clientKey(request.headers)) ? insertClick(click) : Promise.resolve()),
         schedule: (work) => after(work),
         warn: (message, details) => console.warn(message, details),
       },

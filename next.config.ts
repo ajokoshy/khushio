@@ -1,12 +1,14 @@
+import bundleAnalyzer from "@next/bundle-analyzer";
 import type { NextConfig } from "next";
+import { securityHeaders } from "./src/core/security/csp";
 
-const securityHeaders = [
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-];
+// Release 7B: the headers (and the Content-Security-Policy) come from one tested function. Read at build time, so changing
+// CSP_ENFORCE or NEXT_PUBLIC_ANALYTICS in Vercel needs a redeploy.
+const headers = securityHeaders({
+  production: process.env.NODE_ENV === "production",
+  enforceCsp: process.env.CSP_ENFORCE === "true",
+  analytics: process.env.NEXT_PUBLIC_ANALYTICS === "vercel",
+});
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -20,8 +22,11 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [{ source: "/:path*", headers }];
   },
 };
 
-export default nextConfig;
+// `npm run analyze` writes the bundle reports to .next/analyze (Release 7B).
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true", openAnalyzer: false });
+
+export default withBundleAnalyzer(nextConfig);

@@ -1,6 +1,6 @@
 import { hasPermission, PERMISSIONS as P, type PermissionKey } from "@/core/permissions";
 
-export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media" | "links" | "networks" | "programs" | "reports" | "conversions" | "deals" | "coupons" | "import" | "articles" | "pages" | "authors" | "topics" | "homepage" | "navigation";
+export type AdminNavIcon = "dashboard" | "audit" | "categories" | "brands" | "merchants" | "products" | "media" | "links" | "networks" | "programs" | "reports" | "conversions" | "deals" | "coupons" | "import" | "articles" | "pages" | "authors" | "topics" | "homepage" | "navigation" | "redirects" | "seo" | "launch";
 
 export type AdminNavItem = {
   label: string;
@@ -32,6 +32,9 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: "Topics and tags", href: "/admin/topics", icon: "topics", permission: P.contentWrite },
   { label: "Homepage", href: "/admin/homepage", icon: "homepage", permission: P.homepageWrite },
   { label: "Navigation", href: "/admin/navigation", icon: "navigation", permission: P.homepageWrite },
+  { label: "Search (SEO)", href: "/admin/seo", icon: "seo", permission: P.seoWrite },
+  { label: "Redirects", href: "/admin/redirects", icon: "redirects", permission: P.seoWrite },
+  { label: "Launch checklist", href: "/admin/launch", icon: "launch", permission: P.settingsManage },
   { label: "Reports", href: "/admin/reports", icon: "reports", permission: P.reportView },
   { label: "Conversions", href: "/admin/conversions", icon: "conversions", permission: P.reportView },
   { label: "Import and export", href: "/admin/import", icon: "import", permission: P.importRun },

@@ -1,5 +1,6 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import { logAuditBestEffort } from "@/core/audit";
+import { gonePathOf, refreshRedirects, releasePublicPath, slugMove } from "@/modules/redirects/service";
 import { CACHE_TAGS, CACHE_TTL } from "@/core/config/cache";
 import { ConflictError, NotFoundError, ValidationError } from "@/core/errors";
 import { resolveCreateSlug, resolveUpdateSlug } from "@/core/validation/slug-rules";
@@ -95,6 +96,7 @@ export async function createCategory(input: CategoryInput, actorId: string): Pro
   }
 
   await logAuditBestEffort({ actor: actorId, action: "category.created", entityType: "category", entityId: created.id, metadata: { slug, name: created.name, parentId } });
+  await releasePublicPath("category", slug);
   revalidateTag(CACHE_TAGS.categories);
   return created;
 }
@@ -119,13 +121,16 @@ export async function updateCategory(id: string, input: CategoryInput, actorId: 
   const changed = (Object.keys(next) as (keyof typeof next)[]).filter((key) => next[key] !== current[key]);
   if (changed.length === 0) return current;
 
+  // Release 7A: a slug change writes a 301 from the old address in the same atomic write.
+  const moved = slugMove("category", current.slug, slug);
   let updated: CategoryRow | null;
   try {
-    updated = await repo.updateCategoryRow(id, next);
+    updated = await repo.updateCategoryRow(id, next, moved);
   } catch (error) {
     rethrowDuplicate(error, nameClash);
   }
   if (!updated) throw new NotFoundError("Category not found");
+  if (moved) refreshRedirects();
 
   await logAuditBestEffort({
     actor: actorId,
@@ -175,7 +180,9 @@ export async function deleteCategory(id: string, actorId: string): Promise<void>
   const [children, products] = await Promise.all([repo.countChildCategories(id), repo.countProductsInCategory(id)]);
   if (children > 0) throw new ConflictError(`This category has ${children} subcategor${children === 1 ? "y" : "ies"}, so it cannot be deleted. Archive it instead, or move or delete the subcategories first.`);
   if (products > 0) throw new ConflictError(`${products} product${products === 1 ? " uses" : "s use"} this category, so it cannot be deleted. Archive it instead.`);
-  await repo.deleteCategoryRow(id);
+  const gonePath = gonePathOf("category", current.slug);
+  await repo.deleteCategoryRow(id, gonePath);
+  if (gonePath) refreshRedirects();
   await logAuditBestEffort({ actor: actorId, action: "category.deleted", entityType: "category", entityId: id, metadata: { slug: current.slug, name: current.name } });
   revalidateTag(CACHE_TAGS.categories);
 }
@@ -206,6 +213,7 @@ export async function createBrand(input: BrandInput, actorId: string): Promise<B
     rethrowDuplicate(error, brandNameClash);
   }
   await logAuditBestEffort({ actor: actorId, action: "brand.created", entityType: "brand", entityId: created.id, metadata: { slug, name: created.name } });
+  await releasePublicPath("brand", slug);
   revalidateTag(CACHE_TAGS.brands);
   return created;
 }
@@ -224,13 +232,15 @@ export async function updateBrand(id: string, input: BrandInput, actorId: string
   const changed = (Object.keys(next) as (keyof typeof next)[]).filter((key) => next[key] !== current[key]);
   if (changed.length === 0) return current;
 
+  const moved = slugMove("brand", current.slug, slug);
   let updated: BrandRow | null;
   try {
-    updated = await repo.updateBrandRow(id, next);
+    updated = await repo.updateBrandRow(id, next, moved);
   } catch (error) {
     rethrowDuplicate(error, brandNameClash);
   }
   if (!updated) throw new NotFoundError("Brand not found");
+  if (moved) refreshRedirects();
 
   await logAuditBestEffort({
     actor: actorId,
@@ -266,7 +276,9 @@ export async function deleteBrand(id: string, actorId: string): Promise<void> {
   if (!current) throw new NotFoundError("Brand not found");
   const products = await repo.countProductsForBrand(id);
   if (products > 0) throw new ConflictError(`${products} product${products === 1 ? " uses" : "s use"} this brand, so it cannot be deleted. Archive it instead.`);
-  await repo.deleteBrandRow(id);
+  const gonePath = gonePathOf("brand", current.slug);
+  await repo.deleteBrandRow(id, gonePath);
+  if (gonePath) refreshRedirects();
   await logAuditBestEffort({ actor: actorId, action: "brand.deleted", entityType: "brand", entityId: id, metadata: { slug: current.slug, name: current.name } });
   revalidateTag(CACHE_TAGS.brands);
 }

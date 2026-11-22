@@ -13,7 +13,11 @@
     "db:studio": "drizzle-kit studio",
     "db:seed-rbac": "tsx --env-file=.env.local scripts/seed-rbac.ts",
     "db:seed-dev": "tsx --env-file=.env.local scripts/seed-dev.ts",
-    "auth:hash-password": "tsx scripts/hash-password.ts"
+    "auth:hash-password": "tsx scripts/hash-password.ts",
+    "analyze": "ANALYZE=true next build",
+    "check:bundles": "node scripts/check-public-bundles.mjs",
+    "check:secrets": "node scripts/secrets-scan.mjs",
+    "test:smoke": "playwright test --config playwright.production.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -23,9 +27,10 @@
     "@tiptap/pm": "^2.27.3",
     "@tiptap/react": "^2.27.3",
     "@tiptap/starter-kit": "^2.27.3",
+    "@vercel/analytics": "1.3.2",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
-    "drizzle-orm": "^0.44.0",
+    "drizzle-orm": "^0.45.4",
     "lucide-react": "^0.468.0",
     "next": "^15.5.0",
     "next-auth": "^5.0.0-beta.25",
@@ -38,6 +43,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",
     "@eslint/eslintrc": "^3.3.7",
+    "@next/bundle-analyzer": "^15.5.29",
     "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.0.0",
@@ -50,5 +56,8 @@
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.33"
   }
 }

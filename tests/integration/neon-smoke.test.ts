@@ -15,7 +15,7 @@ describe.skipIf(!url)("Neon test branch", () => {
     expect(tables).toContain("login_attempts");
     expect(tables).toEqual(expect.arrayContaining(["deals", "coupons", "deal_products", "deal_categories"]));
     expect(tables).toEqual(expect.arrayContaining(["author_profiles", "content_categories", "content_tags", "articles", "article_tags", "pages", "seo_metadata"]));
-    expect(tables.length).toBe(41);
+    expect(tables.length).toBe(42);
     const cols = await run`SELECT 1 FROM information_schema.columns WHERE table_name = 'brands' AND column_name = 'is_active'`;
     expect(cols.length).toBe(1);
     const idx = await run`SELECT 1 FROM pg_indexes WHERE indexname = 'categories_parent_name_uq'`;

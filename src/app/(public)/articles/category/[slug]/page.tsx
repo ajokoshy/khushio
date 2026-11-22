@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { env } from "@/core/config/env";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
 import { getArticleListing, getTopicBySlug } from "@/modules/content/public";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { ArticleGrid, EmptyArticles, ListPager, pageFrom } from "@/shared/content/article-list";
@@ -10,13 +10,8 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ page?:
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
   const [topic, page] = [await getTopicBySlug(slug), pageFrom((await searchParams).page)];
-  if (!topic) return { title: "Not found", robots: { index: false } };
-  return {
-    title: `${topic.name} articles`,
-    description: topic.description ?? `Articles and guides about ${topic.name} from Khushio.`,
-    alternates: { canonical: `${env.NEXT_PUBLIC_SITE_URL}/articles/category/${topic.slug}` },
-    robots: page > 1 ? { index: false, follow: true } : { index: true, follow: true },
-  };
+  if (!topic) return notFoundMetadata("Topic");
+  return buildMetadata({ title: `${topic.name} articles`, description: topic.description ?? `Articles and guides about ${topic.name} from Khushio.`, path: `/articles/category/${topic.slug}`, page });
 }
 
 export default async function TopicPage({ params, searchParams }: Props) {

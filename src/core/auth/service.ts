@@ -21,7 +21,7 @@ const OWNER_PERMISSIONS = [...ALL_PERMISSION_KEYS];
  * Compared against when the email is unknown, so a wrong email takes as long as a wrong password
  * and the response time does not reveal which emails exist. It is a hash of a throwaway string.
  */
-const TIMING_EQUALISER_HASH = "$2b$12$Kd0wK/OMkF8Uwk1j3vd41e.fF5GbkS0qmU.td7usENo5Irm2l3JZK";
+const TIMING_EQUALISER_HASH = "$2b$12$Kd0wK/OMkF8Uwk1j3vd41e.fF5GbkS0qmU.td7usENo5Irm2l3JZK"; // secrets-scan:allow (hash of a throwaway string, not a credential)
 
 export type LoginContext = {
   /** Client address, from clientIpFromHeaders(). Only its keyed hash is stored. */

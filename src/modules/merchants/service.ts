@@ -1,5 +1,6 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import { logAuditBestEffort } from "@/core/audit";
+import { gonePathOf, refreshRedirects, releasePublicPath, slugMove } from "@/modules/redirects/service";
 import { CACHE_TAGS, CACHE_TTL } from "@/core/config/cache";
 import { ConflictError, NotFoundError, ValidationError } from "@/core/errors";
 import { uniqueViolationOf } from "@/core/validation/slug";
@@ -46,6 +47,7 @@ export async function createMerchant(input: MerchantInput, actorId: string): Pro
     entityId: created.id,
     metadata: { slug, name: created.name, allowedDomains: created.allowedDomains },
   });
+  await releasePublicPath("store", slug);
   revalidateTag(CACHE_TAGS.merchants);
   return created;
 }
@@ -68,13 +70,15 @@ export async function updateMerchant(id: string, input: MerchantInput, actorId: 
   );
   if (changed.length === 0) return current;
 
+  const moved = slugMove("store", current.slug, slug);
   let updated: MerchantRow | null;
   try {
-    updated = await repo.updateMerchantRow(id, next);
+    updated = await repo.updateMerchantRow(id, next, moved);
   } catch (error) {
     rethrowDuplicate(error);
   }
   if (!updated) throw new NotFoundError("Merchant not found");
+  if (moved) refreshRedirects();
 
   // Allowed domains decide where /go may send visitors, so exactly what was added or removed is recorded.
   const added = next.allowedDomains.filter((d) => !current.allowedDomains.includes(d));
@@ -120,7 +124,9 @@ export async function deleteMerchant(id: string, actorId: string): Promise<void>
   const [links, programs] = await Promise.all([repo.countAffiliateLinksForMerchant(id), repo.countProgramsForMerchant(id)]);
   if (links > 0) throw new ConflictError(`${links} affiliate link${links === 1 ? " uses" : "s use"} this merchant, so it cannot be deleted. Archive it instead.`);
   if (programs > 0) throw new ConflictError(`This merchant has ${programs} affiliate programme${programs === 1 ? "" : "s"}, so it cannot be deleted. Archive it instead.`);
-  await repo.deleteMerchantRow(id);
+  const gonePath = gonePathOf("store", current.slug);
+  await repo.deleteMerchantRow(id, gonePath);
+  if (gonePath) refreshRedirects();
   await logAuditBestEffort({ actor: actorId, action: "merchant.deleted", entityType: "merchant", entityId: id, metadata: { slug: current.slug, name: current.name } });
   revalidateTag(CACHE_TAGS.merchants);
   revalidateTag(CACHE_TAGS.deals); // offers of an archived store disappear, and return when it is restored

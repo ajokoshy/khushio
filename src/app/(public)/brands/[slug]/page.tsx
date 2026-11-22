@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { getPublicBrand, listPublicCategoryOptions } from "@/modules/discover/service";
 import { listCatalog } from "@/modules/catalog/service";
-import { parseCatalogParams } from "@/modules/catalog/filters";
-import { listingMetadata } from "@/modules/catalog/seo";
+import { isFilteredView, parseCatalogParams } from "@/modules/catalog/filters";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
+import { getSeoOverride } from "@/modules/seo/service";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { Listing } from "@/shared/catalog/listing";
 
@@ -11,12 +12,16 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<SP> };
 
 export async function generateMetadata({ params, searchParams }: Props) {
   const brand = await getPublicBrand((await params).slug);
-  if (!brand) return { title: "Brand not found", robots: { index: false } };
-  return listingMetadata({
+  if (!brand) return notFoundMetadata("Brand");
+  const filters = parseCatalogParams(await searchParams);
+  const filtered = isFilteredView(filters);
+  const thin = !filtered && (await listCatalog({ scope: { brandId: brand.id }, filters: { ...filters, brand: undefined } })).cards.length === 0;
+  return buildMetadata({
     title: brand.name,
     description: brand.description ?? `Products by ${brand.name} on Khushio.`,
     path: `/brands/${brand.slug}`,
-    filters: parseCatalogParams(await searchParams),
+    noindex: filtered || thin,
+    override: await getSeoOverride("brand", brand.id),
   });
 }
 

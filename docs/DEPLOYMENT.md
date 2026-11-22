@@ -91,5 +91,11 @@ Create the `test` branch from production, run `khushio-sql-firstload.sql` and ev
 - **Code:** in Vercel, Deployments, promote the previous deployment (instant).
 - **Database:** the SQL files are additive, so old code keeps working. If a script itself went wrong, restore from the `backup-<phase>-<date>` branch using Neon's restore or by swapping connection strings.
 
+### After every deploy (from Release 7B)
+- Run the read-only smoke suite against the deployed address: `SMOKE_BASE_URL=https://your-domain npm run test:smoke`.
+- Run the "Lighthouse budget" workflow on a preview before launch, and after any release that changes page layout or images.
+- Keep the previous production deployment noted so it can be promoted at once. The full launch-day procedure is in `docs/LAUNCH.md`; backups in `docs/BACKUP.md`.
+- Redirects need the production domain: the middleware fetches `/api/redirect-map` from its own address, which a password-protected preview deployment refuses, so redirects do not act on protected previews.
+
 ### Per-release cost check
 Open Vercel Usage, Neon Usage and Cloudinary Usage and write the three numbers into `docs/PERFORMANCE.md`. If any is above 50 percent of its free allowance before launch, fix that first.

@@ -1,7 +1,11 @@
 import Image from "next/image";
 import { env } from "@/core/config/env";
 import { getHomepage } from "@/modules/homepage/service";
+import type { Metadata } from "next";
+import { absoluteUrl } from "@/modules/seo/metadata";
 import { HomepageSections } from "@/shared/homepage/sections";
+
+export const metadata: Metadata = { alternates: { canonical: absoluteUrl("/") } };
 
 export const revalidate = 600; // homepage: 10 min (CACHE_TTL.homepage in core/config/cache.ts); every homepage admin write refreshes it at once
 

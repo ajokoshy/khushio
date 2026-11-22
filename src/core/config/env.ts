@@ -12,6 +12,10 @@ const schema = z.object({
   CLOUDINARY_API_SECRET: z.string().optional(),
   /** Release 4B: the daily roll-up route accepts only requests carrying this secret (Vercel Cron sends it as a Bearer token). */
   CRON_SECRET: z.string().min(16).optional(),
+  /** Release 7B: "vercel" turns on Vercel Web Analytics and Speed Insights (cookie-free, nothing written to Neon). Needs a redeploy. */
+  NEXT_PUBLIC_ANALYTICS: z.enum(["off", "vercel"]).default("off"),
+  /** Release 7B: "true" makes the Content-Security-Policy enforced; anything else keeps it in report-only mode. Needs a redeploy. */
+  CSP_ENFORCE: z.enum(["true", "false"]).optional(),
 });
 
 // Empty strings (e.g. a blank line in .env.local or an unset CI secret) count as "not set".

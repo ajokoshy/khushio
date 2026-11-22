@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PERMISSIONS as P } from "@/core/permissions";
 import { requirePagePermission } from "@/core/permissions/require";
 import { imageUrl } from "@/infrastructure/cloudinary";
-import { listMedia } from "@/modules/media/service";
+import { countMissingAlt, listMedia } from "@/modules/media/service";
 import type { MediaListRow, MediaUsageFilter } from "@/modules/media/types";
 import { ConfirmActionButton } from "@/shared/admin/confirm-action-button";
 import { DataTable, type Column } from "@/shared/admin/data-table";
@@ -29,7 +29,7 @@ const columns: Column<MediaListRow>[] = [
     },
   },
   { key: "file", header: "File", cell: (m) => <><code className="break-all text-xs">{m.publicId.replace("khushio/products/", "")}</code><div className="text-xs text-ink-600">{m.width && m.height ? `${m.width}×${m.height}` : ""} {kilobytes(m.bytes)}</div></> },
-  { key: "alt", header: "Default description", cell: (m) => <AltEditor id={m.id} initial={m.alt ?? ""} /> },
+  { key: "alt", header: "Default description", cell: (m) => <><AltEditor id={m.id} initial={m.alt ?? ""} />{!m.alt?.trim() && <p className="mt-1 text-xs font-medium text-coral-600">Missing: add a short description of the picture.</p>}</> },
   { key: "used", header: "Used by", cell: (m) => (m.usedBy === 0 ? <span className="rounded-full bg-coral-100 px-2 py-0.5 text-xs text-coral-600">Unused</span> : `${m.usedBy} use${m.usedBy === 1 ? "" : "s"}`) },
   {
     key: "actions",
@@ -48,13 +48,15 @@ export default async function MediaPage({ searchParams }: { searchParams: Promis
 
   const sp = await searchParams;
   const { page, pageSize, offset, q } = parseListParams(sp, { pageSize: 20 });
-  const usage: MediaUsageFilter = firstParam(sp.usage) === "unused" ? "unused" : "all";
-  const { rows, hasNext } = await listMedia({ q, usage, limit: pageSize, offset });
+  const usageParam = firstParam(sp.usage);
+  const usage: MediaUsageFilter = usageParam === "unused" || usageParam === "no-alt" ? usageParam : "all";
+  const [{ rows, hasNext }, missingAlt] = await Promise.all([listMedia({ q, usage, limit: pageSize, offset }), countMissingAlt()]);
 
   return (
     <>
       <h1 className="text-3xl">Media library</h1>
-      <p className="mt-2 max-w-prose text-ink-600">Every image stored in Cloudinary. Images are uploaded from a product&apos;s edit screen; the same picture is stored once. Use the unused filter to find files you can delete.</p>
+      <p className="mt-2 max-w-prose text-ink-600">Every image stored in Cloudinary. Images are uploaded from a product&apos;s edit screen; the same picture is stored once. Use the unused filter to find files you can delete, and the missing description filter to find pictures that need alt text.</p>
+      {missingAlt > 0 && <p role="status" className="mt-3 max-w-prose rounded-xl border border-coral-100 bg-coral-100/40 px-4 py-2 text-sm">{missingAlt} picture{missingAlt === 1 ? " has" : "s have"} no description. <Link href="/admin/media?usage=no-alt" className="font-medium underline">Show them</Link></p>}
 
       <div className="mt-6">
         <ListToolbar action="/admin/media" q={q} placeholder="Search file name">
@@ -63,6 +65,7 @@ export default async function MediaPage({ searchParams }: { searchParams: Promis
             <select id="usage" name="usage" defaultValue={usage} className="rounded-xl border border-cream-200 bg-cream-50 px-3 py-2 text-sm">
               <option value="all">All images</option>
               <option value="unused">Unused images</option>
+              <option value="no-alt">Missing description (alt text)</option>
             </select>
           </div>
         </ListToolbar>
@@ -72,7 +75,7 @@ export default async function MediaPage({ searchParams }: { searchParams: Promis
           rows={rows}
           getRowKey={(m) => m.id}
           empty={
-            q || usage === "unused" ? (
+            q || usage !== "all" ? (
               <EmptyState title="No images match" description="Try a different search, or reset the filters." />
             ) : (
               <EmptyState title="No images yet" action={<Link href="/admin/products" className="font-medium text-coral-600 underline">Open a product to upload one</Link>} />

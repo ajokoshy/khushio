@@ -11,7 +11,8 @@ export type MediaRow = {
 
 export type MediaListRow = MediaRow & { usedBy: number };
 
-export type MediaUsageFilter = "all" | "unused";
+/** Release 7A: "no-alt" lists pictures with no description (alt text), which search engines and screen readers need. */
+export type MediaUsageFilter = "all" | "unused" | "no-alt";
 
 /** A validated Cloudinary upload, ready to be recorded. */
 export type MediaWrite = {

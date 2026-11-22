@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { env } from "@/core/config/env";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
 import { getArticleListing, getTagBySlug } from "@/modules/content/public";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { ArticleGrid, EmptyArticles, ListPager, pageFrom } from "@/shared/content/article-list";
@@ -10,8 +10,8 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ page?:
 /** Tag pages are for browsing: they stay out of search results so thin, overlapping lists do not compete with the articles. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const tag = await getTagBySlug((await params).slug);
-  if (!tag) return { title: "Not found", robots: { index: false } };
-  return { title: `Articles tagged ${tag.name}`, alternates: { canonical: `${env.NEXT_PUBLIC_SITE_URL}/articles/tag/${tag.slug}` }, robots: { index: false, follow: true } };
+  if (!tag) return notFoundMetadata("Tag");
+  return buildMetadata({ title: `Articles tagged ${tag.name}`, description: `Articles and guides tagged ${tag.name} on Khushio.`, path: `/articles/tag/${tag.slug}`, noindex: true });
 }
 
 export default async function TagPage({ params, searchParams }: Props) {

@@ -95,7 +95,11 @@ export const pages = pgTable("pages", {
   index("pages_status_publish_idx").on(t.status, t.publishAt),
 ]);
 
-/** Search-engine fields for any content item. Polymorphic: entity_type is 'article' or 'page' (Release 7A adds more). One row per item. */
+/** Release 7A: the kinds of item that can have a search-engine override. The check is in code (modules/seo), not in the table, so a new kind needs no SQL. */
+export const SEO_ENTITY_TYPES = ["article", "page", "product", "category", "brand", "store"] as const;
+export type SeoEntityType = (typeof SEO_ENTITY_TYPES)[number];
+
+/** Search-engine fields for any item. Polymorphic: entity_type is one of SEO_ENTITY_TYPES (articles and pages since 6A, the rest since 7A). One row per item. */
 export const seoMetadata = pgTable("seo_metadata", {
   id: id(),
   entityType: text("entity_type").notNull(),

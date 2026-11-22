@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { excerptFrom } from "@/modules/content/document";
 import { getVisiblePage } from "@/modules/content/public";
-import { contentMetadata } from "@/modules/content/seo";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { DocumentRenderer } from "@/shared/content/document-renderer";
 
@@ -12,8 +12,8 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const found = await getVisiblePage((await params).slug);
-  if (!found) return { title: "Page not found", robots: { index: false } };
-  return contentMetadata({ title: found.title, description: excerptFrom(found.content), path: `/p/${found.slug}`, seo: found.seo, type: "website" });
+  if (!found) return notFoundMetadata("Page");
+  return buildMetadata({ title: found.title, description: excerptFrom(found.content), path: `/p/${found.slug}`, override: found.seo });
 }
 
 export default async function StandalonePage({ params }: Props) {

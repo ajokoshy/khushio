@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, like, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { runAtomically } from "@/core/database/atomic";
+import { goneStatements, movedStatements } from "@/core/database/redirect-statements";
 import { articles, articleTags, authorProfiles, contentCategories, contentTags, pages, seoMetadata } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
 import { sanitizeDocument } from "./document";
@@ -105,17 +106,19 @@ export async function insertArticleGraph(id: string, values: ArticleWrite, tagId
 }
 
 /** `seo` null leaves the SEO row alone (a writer without seo:write); an all-empty object removes it. */
-export async function updateArticleGraph(id: string, values: ArticleWrite, tagIds: readonly string[], seo: SeoFields | null): Promise<void> {
+export async function updateArticleGraph(id: string, values: ArticleWrite, tagIds: readonly string[], seo: SeoFields | null, moved: { fromPath: string; toPath: string } | null = null): Promise<void> {
   await runAtomically((d) => {
     const statements: unknown[] = [d.update(articles).set(values).where(eq(articles.id, id)), d.delete(articleTags).where(eq(articleTags.articleId, id))];
     if (tagIds.length > 0) statements.push(d.insert(articleTags).values(tagIds.map((tagId) => ({ articleId: id, tagId }))));
     if (seo) statements.push(seoStatement(d, "article", id, seo));
+    // Release 7A: a changed slug and its 301 are one all-or-nothing write.
+    if (moved) statements.push(...movedStatements(d, moved));
     return statements;
   });
 }
 
-export async function deleteArticleRow(id: string): Promise<void> {
-  await runAtomically((d) => [d.delete(seoMetadata).where(and(eq(seoMetadata.entityType, "article"), eq(seoMetadata.entityId, id))), d.delete(articles).where(eq(articles.id, id))]);
+export async function deleteArticleRow(id: string, gonePath: string | null = null): Promise<void> {
+  await runAtomically((d) => [d.delete(seoMetadata).where(and(eq(seoMetadata.entityType, "article"), eq(seoMetadata.entityId, id))), d.delete(articles).where(eq(articles.id, id)), ...(gonePath ? goneStatements(d, { path: gonePath }) : [])]);
 }
 
 /** Finds or creates the tags with these names (matched by web address or by name, ignoring case) and returns their ids in order. */
@@ -167,16 +170,17 @@ export async function insertPageGraph(id: string, values: PageWrite, seo: SeoFie
   });
 }
 
-export async function updatePageGraph(id: string, values: PageWrite, seo: SeoFields | null): Promise<void> {
+export async function updatePageGraph(id: string, values: PageWrite, seo: SeoFields | null, moved: { fromPath: string; toPath: string } | null = null): Promise<void> {
   await runAtomically((d) => {
     const statements: unknown[] = [d.update(pages).set(values).where(eq(pages.id, id))];
     if (seo) statements.push(seoStatement(d, "page", id, seo));
+    if (moved) statements.push(...movedStatements(d, moved));
     return statements;
   });
 }
 
-export async function deletePageRow(id: string): Promise<void> {
-  await runAtomically((d) => [d.delete(seoMetadata).where(and(eq(seoMetadata.entityType, "page"), eq(seoMetadata.entityId, id))), d.delete(pages).where(eq(pages.id, id))]);
+export async function deletePageRow(id: string, gonePath: string | null = null): Promise<void> {
+  await runAtomically((d) => [d.delete(seoMetadata).where(and(eq(seoMetadata.entityType, "page"), eq(seoMetadata.entityId, id))), d.delete(pages).where(eq(pages.id, id)), ...(gonePath ? goneStatements(d, { path: gonePath }) : [])]);
 }
 
 /* ================================== admin: authors, topics, tags ================================== */

@@ -67,12 +67,19 @@ export async function countImageUses(publicId: string): Promise<number> {
   return Number(row?.n ?? 0) + Number(content?.n ?? 0);
 }
 
+/** How many pictures have no description (alt text). Release 7A. */
+export async function countMissingAlt(): Promise<number> {
+  const [row] = await db().select({ n: count() }).from(mediaAssets).where(sql`(${mediaAssets.alt} is null or trim(${mediaAssets.alt}) = '')`);
+  return Number(row?.n ?? 0);
+}
+
 /** Newest first, with how many product images use each file. "unused" keeps only files nothing uses. */
 export async function selectMedia(opts: { q?: string; usage: MediaUsageFilter; limit: number; offset: number }): Promise<MediaListRow[]> {
   const usedBy = sql<number>`((select count(*)::int from ${productImages} where ${productImages.publicId} = ${mediaAssets.publicId}) + ${contentUses(sql`${mediaAssets.publicId}`)})`;
   const conditions: (SQL | undefined)[] = [];
   if (opts.q) conditions.push(ilike(mediaAssets.publicId, `%${escapeLike(opts.q)}%`));
   if (opts.usage === "unused") conditions.push(sql`(not exists (select 1 from ${productImages} where ${productImages.publicId} = ${mediaAssets.publicId}) and ${contentUses(sql`${mediaAssets.publicId}`)} = 0)`);
+  if (opts.usage === "no-alt") conditions.push(sql`(${mediaAssets.alt} is null or trim(${mediaAssets.alt}) = '')`);
   const rows = await db()
     .select({ ...mediaColumns, usedBy })
     .from(mediaAssets)

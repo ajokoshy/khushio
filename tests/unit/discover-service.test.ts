@@ -9,6 +9,7 @@ const repo = vi.hoisted(() => ({
 const audit = vi.hoisted(() => vi.fn());
 const revalidate = vi.hoisted(() => vi.fn());
 vi.mock("@/modules/discover/repository", () => repo);
+vi.mock("@/modules/redirects/repository", () => ({ deleteRuleByFrom: async () => undefined }));
 vi.mock("@/core/audit", () => ({ logAuditBestEffort: (...a: unknown[]) => audit(...a) }));
 vi.mock("next/cache", () => ({ revalidateTag: (...a: unknown[]) => revalidate(...a), unstable_cache: <T extends (...a: never[]) => unknown>(fn: T) => fn }));
 
@@ -94,14 +95,14 @@ describe("updateCategory", () => {
 
   it("moves a category under another branch and records the move in the audit log", async () => {
     await service.updateCategory("running", catInput({ name: "running", slug: "running", parentId: "home" }), "a");
-    expect(repo.updateCategoryRow).toHaveBeenCalledWith("running", expect.objectContaining({ parentId: "home" }));
+    expect(repo.updateCategoryRow).toHaveBeenCalledWith("running", expect.objectContaining({ parentId: "home" }), null);
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "category.updated", metadata: expect.objectContaining({ parentId: { from: "shoes", to: "home" } }) }));
   });
 
   it("does not change the slug without confirmation, and records it when confirmed", async () => {
     await expect(service.updateCategory("home", catInput({ name: "home", slug: "house" }), "a")).rejects.toMatchObject({ fields: { slug: expect.any(String) } });
     await service.updateCategory("home", catInput({ name: "home", slug: "house", confirmSlugChange: true }), "a");
-    expect(repo.updateCategoryRow).toHaveBeenCalledWith("home", expect.objectContaining({ slug: "house" }));
+    expect(repo.updateCategoryRow).toHaveBeenCalledWith("home", expect.objectContaining({ slug: "house" }), { fromPath: "/categories/home", toPath: "/categories/house" });
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ slug: { from: "home", to: "house" } }) }));
   });
 
@@ -148,7 +149,7 @@ describe("archive, restore and delete rules (category)", () => {
 
     repo.countProductsInCategory.mockResolvedValue(0);
     await service.deleteCategory("x", "a");
-    expect(repo.deleteCategoryRow).toHaveBeenCalledWith("x");
+    expect(repo.deleteCategoryRow).toHaveBeenCalledWith("x", "/categories/x"); // a 410 is left behind (Release 7A)
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "category.deleted" }));
   });
 });
@@ -196,6 +197,6 @@ describe("brands", () => {
     expect(repo.updateBrandRow).toHaveBeenCalledWith("b", { isActive: false });
     repo.countProductsForBrand.mockResolvedValue(0);
     await service.deleteBrand("b", "a");
-    expect(repo.deleteBrandRow).toHaveBeenCalledWith("b");
+    expect(repo.deleteBrandRow).toHaveBeenCalledWith("b", "/brands/nike");
   });
 });

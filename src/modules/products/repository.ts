@@ -1,3 +1,4 @@
+import { goneStatements, movedStatements } from "@/core/database/redirect-statements";
 import { and, asc, count, desc, eq, ilike, inArray, like, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { runAtomically } from "@/core/database/atomic";
@@ -11,6 +12,7 @@ import {
   products,
   productTags,
   productVariants,
+  seoMetadata,
 } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
 import type { AttributeRow, ProductFilter, ProductGraph, ProductImageRow, ProductListRow, ProductRow, ProductStatus, VariantRow } from "./types";
@@ -160,7 +162,7 @@ export async function insertProductGraph(productId: string, graph: ProductGraph)
 }
 
 /** Variants whose id is in `existingVariantIds` are updated, the other submitted ones are added, and variants not submitted are removed. */
-export async function updateProductGraph(productId: string, graph: ProductGraph, existingVariantIds: ReadonlySet<string>): Promise<void> {
+export async function updateProductGraph(productId: string, graph: ProductGraph, existingVariantIds: ReadonlySet<string>, moved: { fromPath: string; toPath: string } | null = null): Promise<void> {
   await runAtomically((d) => {
     const statements = graphStatements(d, productId, graph, "update");
     const kept = graph.variants.filter((v) => existingVariantIds.has(v.id));
@@ -173,6 +175,8 @@ export async function updateProductGraph(productId: string, graph: ProductGraph,
       statements.push(d.update(productVariants).set({ sku: v.sku, label: v.label, priceMinor: v.priceMinor, currency: v.currency, sortOrder: v.sortOrder }).where(and(eq(productVariants.id, v.id), eq(productVariants.productId, productId))));
     }
     if (added.length > 0) statements.push(d.insert(productVariants).values(added.map((v) => ({ productId, ...v }))));
+    // Release 7A: a changed slug and its 301 are one all-or-nothing write.
+    if (moved) statements.push(...movedStatements(d, moved));
     return statements;
   });
 }
@@ -182,8 +186,9 @@ export async function updateProductStatusRow(id: string, status: ProductStatus, 
   return row ?? null;
 }
 
-export async function deleteProductRow(id: string): Promise<void> {
-  await db().delete(products).where(eq(products.id, id));
+export async function deleteProductRow(id: string, gonePath: string | null = null): Promise<void> {
+  // Release 7A: the search override goes with the product, and a page that was public leaves a 410 behind, all in one write.
+  await runAtomically((d) => [d.delete(seoMetadata).where(and(eq(seoMetadata.entityType, "product"), eq(seoMetadata.entityId, id))), d.delete(products).where(eq(products.id, id)), ...(gonePath ? goneStatements(d, { path: gonePath }) : [])]);
 }
 
 /* -------------------------------- images -------------------------------- */

@@ -1,6 +1,8 @@
+import { goneStatements, movedStatements } from "@/core/database/redirect-statements";
 import { and, asc, count, eq, ilike, inArray, isNull, like, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { brands, categories, productCategories, products } from "@/core/database/schema";
+import { runAtomically } from "@/core/database/atomic";
+import { brands, categories, productCategories, products, seoMetadata } from "@/core/database/schema";
 import { escapeLike } from "@/core/validation/like";
 import type { BrandOption, BrandRow, BrandWrite, CategoryRow, CategoryWrite, StatusFilter } from "./types";
 
@@ -65,13 +67,18 @@ export async function insertCategory(values: CategoryWrite): Promise<CategoryRow
   return row;
 }
 
-export async function updateCategoryRow(id: string, values: Partial<CategoryWrite> & { isActive?: boolean }): Promise<CategoryRow | null> {
+export async function updateCategoryRow(id: string, values: Partial<CategoryWrite> & { isActive?: boolean }, moved: { fromPath: string; toPath: string } | null = null): Promise<CategoryRow | null> {
+  if (moved) {
+    // Release 7A: the new slug and the 301 from the old address are one all-or-nothing write.
+    await runAtomically((d) => [d.update(categories).set(values).where(eq(categories.id, id)), ...movedStatements(d, moved)]);
+    return selectCategoryById(id);
+  }
   const [row] = await db().update(categories).set(values).where(eq(categories.id, id)).returning(categoryColumns);
   return row ?? null;
 }
 
-export async function deleteCategoryRow(id: string): Promise<void> {
-  await db().delete(categories).where(eq(categories.id, id));
+export async function deleteCategoryRow(id: string, gonePath: string | null = null): Promise<void> {
+  await runAtomically((d) => [d.delete(seoMetadata).where(and(eq(seoMetadata.entityType, "category"), eq(seoMetadata.entityId, id))), d.delete(categories).where(eq(categories.id, id)), ...(gonePath ? goneStatements(d, { path: gonePath }) : [])]);
 }
 
 export async function countChildCategories(id: string, options: { activeOnly?: boolean } = {}): Promise<number> {
@@ -135,13 +142,17 @@ export async function insertBrand(values: BrandWrite): Promise<BrandRow> {
   return row;
 }
 
-export async function updateBrandRow(id: string, values: Partial<BrandWrite> & { isActive?: boolean }): Promise<BrandRow | null> {
+export async function updateBrandRow(id: string, values: Partial<BrandWrite> & { isActive?: boolean }, moved: { fromPath: string; toPath: string } | null = null): Promise<BrandRow | null> {
+  if (moved) {
+    await runAtomically((d) => [d.update(brands).set(values).where(eq(brands.id, id)), ...movedStatements(d, moved)]);
+    return selectBrandById(id);
+  }
   const [row] = await db().update(brands).set(values).where(eq(brands.id, id)).returning(brandColumns);
   return row ?? null;
 }
 
-export async function deleteBrandRow(id: string): Promise<void> {
-  await db().delete(brands).where(eq(brands.id, id));
+export async function deleteBrandRow(id: string, gonePath: string | null = null): Promise<void> {
+  await runAtomically((d) => [d.delete(seoMetadata).where(and(eq(seoMetadata.entityType, "brand"), eq(seoMetadata.entityId, id))), d.delete(brands).where(eq(brands.id, id)), ...(gonePath ? goneStatements(d, { path: gonePath }) : [])]);
 }
 
 /** Uses products_brand_idx. */

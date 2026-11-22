@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicCategory, listBrandOptions } from "@/modules/discover/service";
 import { listCatalog } from "@/modules/catalog/service";
-import { parseCatalogParams } from "@/modules/catalog/filters";
-import { listingMetadata } from "@/modules/catalog/seo";
+import { isFilteredView, parseCatalogParams } from "@/modules/catalog/filters";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
+import { getSeoOverride } from "@/modules/seo/service";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { Listing } from "@/shared/catalog/listing";
 
@@ -12,12 +13,17 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<SP> };
 
 export async function generateMetadata({ params, searchParams }: Props) {
   const found = await getPublicCategory((await params).slug);
-  if (!found) return { title: "Category not found", robots: { index: false } };
-  return listingMetadata({
+  if (!found) return notFoundMetadata("Category");
+  const filters = parseCatalogParams(await searchParams);
+  // Thin: nothing to list and no subcategory to browse. Filtered, searched and paged views are for people, not search engines.
+  const filtered = isFilteredView(filters);
+  const thin = !filtered && found.children.length === 0 && (await listCatalog({ scope: { categoryIds: found.scopeIds }, filters: { ...filters, category: undefined } })).cards.length === 0;
+  return buildMetadata({
     title: found.category.name,
     description: found.category.description ?? `Products in ${found.category.name} on Khushio.`,
     path: `/categories/${found.category.slug}`,
-    filters: parseCatalogParams(await searchParams),
+    noindex: filtered || thin,
+    override: await getSeoOverride("category", found.category.id),
   });
 }
 

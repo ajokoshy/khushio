@@ -1,5 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { logAuditBestEffort } from "@/core/audit";
+import { gonePathOf, refreshRedirects, releasePublicPath, slugMove } from "@/modules/redirects/service";
 import { CACHE_TAGS } from "@/core/config/cache";
 import { ConflictError, NotFoundError, ValidationError } from "@/core/errors";
 import { slugify, uniqueViolationOf } from "@/core/validation/slug";
@@ -95,6 +96,7 @@ export async function createArticle(input: ArticleInput, who: Who, now: Date = n
     actor: who.actorId, action: "article.created", entityType: "article", entityId: id,
     metadata: { slug, title: input.title, type: input.type, status: input.status, publishAt: values.publishAt?.toISOString() ?? null, tags: tagIds.length },
   });
+  await releasePublicPath("article", slug);
   touch();
   return { id, slug };
 }
@@ -132,11 +134,14 @@ export async function updateArticle(id: string, input: ArticleInput, who: Who, n
   if (nextSeo && !sameSeo(nextSeo, currentSeo)) changed.push("seo");
   if (changed.length === 0) return;
 
+  // Release 7A: a slug change writes a 301 from the old address in the same atomic write (only for an article that was ever public).
+  const moved = slugMove("article", current.slug, slug, current.status);
   try {
-    await repo.updateArticleGraph(id, next, tagIds, nextSeo);
+    await repo.updateArticleGraph(id, next, tagIds, nextSeo, moved);
   } catch (error) {
     slugTaken(error);
   }
+  if (moved) refreshRedirects();
   await logAuditBestEffort({
     actor: who.actorId, action: "article.updated", entityType: "article", entityId: id,
     metadata: { changed, ...(slug !== current.slug ? { slug: { from: current.slug, to: slug } } : {}), ...(next.status !== current.status ? { status: { from: current.status, to: next.status } } : {}) },
@@ -149,7 +154,9 @@ export async function deleteArticle(id: string, who: Who): Promise<void> {
   if (!current) throw new NotFoundError("Article not found");
   if (current.status === "PUBLISHED" || current.status === "SCHEDULED") throw new ConflictError("Archive this article before deleting it, so its address stops working on purpose.");
   if (!who.canPublish && current.status === "ARCHIVED") throw new ConflictError("Your account cannot delete an archived article.");
-  await repo.deleteArticleRow(id);
+  const gonePath = gonePathOf("article", current.slug, current.status); // 410 for an article that was public (it had to be archived first)
+  await repo.deleteArticleRow(id, gonePath);
+  if (gonePath) refreshRedirects();
   await logAuditBestEffort({ actor: who.actorId, action: "article.deleted", entityType: "article", entityId: id, metadata: { slug: current.slug, title: current.title, status: current.status } });
   touch();
 }
@@ -180,6 +187,7 @@ export async function createPage(input: PageInput, who: Who, now: Date = new Dat
     slugTaken(error);
   }
   await logAuditBestEffort({ actor: who.actorId, action: "page.created", entityType: "page", entityId: id, metadata: { slug, title: input.title, status: input.status } });
+  await releasePublicPath("page", slug);
   touch();
   return { id, slug };
 }
@@ -203,12 +211,14 @@ export async function updatePage(id: string, input: PageInput, who: Who, now: Da
   if (nextSeo && !sameSeo(nextSeo, currentSeo)) changed.push("seo");
   if (changed.length === 0) return;
 
+  const moved = slugMove("page", current.slug, slug, current.status);
   try {
-    await repo.updatePageGraph(id, next, nextSeo);
+    await repo.updatePageGraph(id, next, nextSeo, moved);
   } catch (error) {
     slugTaken(error);
   }
-  await logAuditBestEffort({ actor: who.actorId, action: "page.updated", entityType: "page", entityId: id, metadata: { changed, ...(next.status !== current.status ? { status: { from: current.status, to: next.status } } : {}) } });
+  if (moved) refreshRedirects();
+  await logAuditBestEffort({ actor: who.actorId, action: "page.updated", entityType: "page", entityId: id, metadata: { changed, ...(slug !== current.slug ? { slug: { from: current.slug, to: slug } } : {}), ...(next.status !== current.status ? { status: { from: current.status, to: next.status } } : {}) } });
   touch();
 }
 
@@ -216,7 +226,9 @@ export async function deletePage(id: string, who: Who): Promise<void> {
   const current = await repo.selectPageById(id);
   if (!current) throw new NotFoundError("Page not found");
   if (current.status === "PUBLISHED" || current.status === "SCHEDULED") throw new ConflictError("Archive this page before deleting it, so its address stops working on purpose.");
-  await repo.deletePageRow(id);
+  const gonePath = gonePathOf("page", current.slug, current.status);
+  await repo.deletePageRow(id, gonePath);
+  if (gonePath) refreshRedirects();
   await logAuditBestEffort({ actor: who.actorId, action: "page.deleted", entityType: "page", entityId: id, metadata: { slug: current.slug, title: current.title } });
   touch();
 }

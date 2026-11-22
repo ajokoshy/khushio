@@ -1,0 +1,36 @@
+name: Lighthouse budget
+
+# Release 7B. Runs Lighthouse (3 runs, median) against the home page and one product page of a deployed site and fails when the
+# Core Web Vitals budget in lighthouserc.json is broken: LCP 2.5 s, CLS 0.1, total blocking time 200 ms (the lab stand-in for INP).
+# Run it by hand after each deploy (Actions > Lighthouse budget > Run workflow). Use the PREVIEW address first, then production.
+# Lighthouse measures a lab machine, so also read the real-user numbers in Vercel > Speed Insights once traffic arrives.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Site address without a trailing slash, for example https://khushio.com"
+        required: true
+      product_path:
+        description: "Path of one published product, for example /products/blue-teapot"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Lighthouse CI
+        run: |
+          npx --yes @lhci/cli@0.14.x autorun \
+            --config=lighthouserc.json \
+            --collect.url="${{ inputs.base_url }}/" \
+            --collect.url="${{ inputs.base_url }}${{ inputs.product_path }}" \
+            --upload.target=temporary-public-storage

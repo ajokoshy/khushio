@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { env } from "@/core/config/env";
+import { buildMetadata } from "@/modules/seo/metadata";
 import { getArticleListing, getGuideTypes } from "@/modules/content/public";
 import { ARTICLE_TYPE_PLURALS, GUIDE_TYPES } from "@/modules/content/types";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
@@ -13,15 +13,10 @@ type Props = { searchParams: Promise<{ page?: string | string[] }> };
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const page = pageFrom((await searchParams).page);
-  return {
-    title: "Buying guides, reviews and comparisons",
-    description: "Buying guides, reviews, comparisons and how-tos from Khushio, with the products we recommend.",
-    alternates: { canonical: `${env.NEXT_PUBLIC_SITE_URL}/guides` },
-    robots: page > 1 ? { index: false, follow: true } : { index: true, follow: true },
-  };
+  return buildMetadata({ title: "Buying guides, reviews and comparisons", description: "Buying guides, reviews, comparisons and how-tos from Khushio, with the products we recommend.", path: "/guides", page });
 }
 
-const buildingWithoutDatabase = process.env.NEXT_PHASE === "phase-production-build" && !env.DATABASE_URL;
+const buildingWithoutDatabase = process.env.NEXT_PHASE === "phase-production-build" && !process.env.DATABASE_URL;
 
 export default async function GuidesPage({ searchParams }: Props) {
   const page = pageFrom((await searchParams).page);

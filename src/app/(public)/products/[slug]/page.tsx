@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { env } from "@/core/config/env";
 import { formatMinor } from "@/core/validation/money";
 import { imageUrl } from "@/infrastructure/cloudinary";
 import { getDealsForProduct } from "@/modules/deals/public";
 import { DealGrid } from "@/shared/deals/deal-list";
 import { getCategoryTrail } from "@/modules/discover/service";
 import { getProductPage, getRelatedProducts, listTopProductSlugs } from "@/modules/catalog/service";
+import { buildMetadata, notFoundMetadata } from "@/modules/seo/metadata";
+import { productJsonLd } from "@/modules/seo/jsonld";
+import { getSeoOverride } from "@/modules/seo/service";
+import { JsonLdScript } from "@/shared/seo/json-ld";
 import { AffiliateLink } from "@/shared/catalog/affiliate-link";
 import { Breadcrumbs } from "@/shared/catalog/breadcrumbs";
 import { ProductGrid } from "@/shared/catalog/product-card";
@@ -24,15 +27,15 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await getProductPage((await params).slug);
-  if (!product) return { title: "Product not found", robots: { index: false } };
+  if (!product) return notFoundMetadata("Product");
   const image = product.images[0] ? imageUrl(product.images[0].publicId, "editorial") : null;
-  const description = product.summary ?? product.description?.slice(0, 160) ?? `${product.name} on Khushio.`;
-  return {
+  return buildMetadata({
     title: product.name,
-    description,
-    alternates: { canonical: `${env.NEXT_PUBLIC_SITE_URL}/products/${product.slug}` },
-    openGraph: { title: product.name, description, type: "website", ...(image ? { images: [{ url: image }] } : {}) },
-  };
+    description: product.summary ?? product.description ?? `${product.name} on Khushio.`,
+    path: `/products/${product.slug}`,
+    image,
+    override: await getSeoOverride("product", product.id),
+  });
 }
 
 export default async function ProductPage({ params }: Props) {
@@ -45,6 +48,8 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <article className="mx-auto max-w-6xl px-4 py-8">
+      {/* No availability is tracked yet, so no Offer is written; see modules/seo/jsonld.ts. */}
+      <JsonLdScript data={productJsonLd({ name: product.name, path: `/products/${product.slug}`, description: product.summary ?? product.description, images: product.images.map((i) => imageUrl(i.publicId, "editorial")).filter((u): u is string => !!u), brand: product.brand?.name, variants: product.variants.map((v) => ({ label: v.label, sku: v.sku, priceMinor: v.priceMinor, currency: v.currency })) })} />
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Discover", href: "/discover" }, ...trail.map((c) => ({ label: c.name, href: `/categories/${c.slug}` })), { label: product.name }]} />
 
       <div className="mt-6 grid gap-8 md:grid-cols-2">
